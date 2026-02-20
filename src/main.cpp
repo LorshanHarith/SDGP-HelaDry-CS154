@@ -1,224 +1,346 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <time.h>
-#include <sys/time.h>
-#include <Preferences.h>
-
+#include <WiFiManager.h>
 #include <Wire.h>
+
 #include <HX711.h>
 
+// BME280 + BH1750
 #include <Adafruit_BME280.h>
 #include <BH1750.h>
 
+// Firebase (Mobizt)
 #include <Firebase_ESP_Client.h>
 #include <addons/TokenHelper.h>
 #include <addons/RTDBHelper.h>
 
-// ========================= USER CONFIG =========================
-// WiFi
-static const char* WIFI_SSID = "YOUR_WIFI_SSID";
-static const char* WIFI_PASS = "YOUR_WIFI_PASSWORD";
+// Secrets
+#include <secrets.h>
 
-// Firebase (Realtime Database)
-static const char* API_KEY = "YOUR_FIREBASE_WEB_API_KEY";
-static const char* DATABASE_URL = "https://YOUR_PROJECT_ID-default-rtdb.asia-southeast1.firebasedatabase.app/";
+// ========================= DEVICE =========================
+#define DEVICE_ID "heladry_001"
+#define BOOT_BTN 0
 
-// Auth (Email/Password user in Firebase Auth)
-static const char* USER_EMAIL = "device@heladry.com";
-static const char* USER_PASSWORD = "YOUR_DEVICE_PASSWORD";
-
-// Device ID (used as DB node)
-static const char* DEVICE_ID = "heladry_01";
-// ===============================================================
-
-// ========================= PINOUT =========================
-// Required by your spec
-static const int PIN_HX_DT  = 18;
-static const int PIN_HX_SCK = 19;
-
-// Relay control
-static const int PIN_RELAY_FAN    = 25; // fan relay input
-static const int PIN_RELAY_HEATER = 26; // heater relay input (change if needed)
-
-// I2C pins (ESP32 defaults)
+// ========================= PINOUT (DEFAULTS) =========================
 static const int PIN_I2C_SDA = 21;
 static const int PIN_I2C_SCL = 22;
-// =========================================================
+
+static const int PIN_HX_DT   = 18;
+static const int PIN_HX_SCK  = 19;
+
+static const int PIN_RELAY_FAN    = 25;
+static const int PIN_RELAY_HEATER = 26;
+
+// Battery monitor (optional)
+static const int PIN_BAT_ADC = 34;
+
+// Relay logic
+static const bool RELAY_ACTIVE_LOW = true;
 
 // ========================= TIMING =========================
-static const uint32_t READ_INTERVAL_MS = 5000;   // read sensors every 5s
-static const uint32_t COMMAND_POLL_MS  = 800;    // poll commands when stream not used / as backup
-static const uint32_t WIFI_RETRY_MS    = 8000;   // retry WiFi every 8s if disconnected
-// =========================================================
+static const uint32_t SENSOR_READ_INTERVAL_MS     = 2000;
+static const uint32_t FIREBASE_PUSH_INTERVAL_MS   = 5000;
+static const uint32_t COMMAND_POLL_INTERVAL_MS    = 2000;
 
-// ========================= FILTER =========================
-static const size_t MA_WINDOW = 10; // 10 samples => smoother
-float maBuf[MA_WINDOW];
-size_t maIdx = 0;
-size_t maCount = 0;
-// =========================================================
+static const uint32_t WIFI_WAIT_MS                = 15000;
+static const uint32_t PORTAL_TIMEOUT_SEC          = 180;
+static const uint32_t WIFI_RECONNECT_INTERVAL_MS  = 5000;
 
-// ========================= NVS =========================
-Preferences prefs;
-static const char* NVS_NS = "heladry";
-static const char* NVS_KEY_CAL = "cal_factor";
-static const char* NVS_KEY_RELAYLOW = "relay_low";
-// =======================================================
+// HX711 smoothing
+static const size_t   MA_WINDOW = 10;
 
-// ========================= OBJECTS =========================
+// Heater auto control
+static const float    HEAT_HYST_C = 2.0f;
+
+// ========================= GLOBALS =========================
 HX711 scale;
 Adafruit_BME280 bme;
 BH1750 lightMeter;
 
+bool bme_ok = false;
+bool bh_ok  = false;
+
 FirebaseData fbdo;
-FirebaseData stream;
 FirebaseAuth auth;
 FirebaseConfig config;
-// ==========================================================
 
-// ========================= STATE =========================
-float calibrationFactor = -7050.0f;  // default; overwrite via Firebase/NVS
-bool relayActiveLow = true;          // many relay boards are active-low
+// Weight state
+static float calibration_factor = -7050.0f;
+static float initialWeight_g    = 0.0f;
+static float currentWeight_g    = 0.0f;
+static float filteredWeight_g   = 0.0f;
 
-bool fanOn = false;
-bool heaterOn = false;
+// Sensor state
+static float temp_c = NAN;
+static float hum_pct = NAN;
+static float pres_hpa = NAN;
+static float lux = NAN;
+static float battery_v = NAN;
 
-bool sessionActive = false;
-float initialWeight_g = 0.0f;
+// Control state
+static bool fan_on = false;
+static bool heater_on = false;
 
-uint32_t lastReadMs = 0;
-uint32_t lastCmdPollMs = 0;
-uint32_t lastWifiAttemptMs = 0;
+// Modes/commands
+static bool manual_fan_mode = false;
+static bool manual_heater_mode = false;
 
-// Stall detection (auto fan)
-float minDrop_g_per_min = 1.0f; // expected minimum drying drop per minute
-int stallMinutes = 5;           // window duration for stall detection
-uint32_t lastTrendCheckMs = 0;
-float lastTrendWeight_g = 0.0f;
-// =========================================================
+static bool  auto_heat_enabled = false;
+static float target_temp_c = 35.0f;
+
+// Moving average buffer (HX711)
+static float  ma_buf[MA_WINDOW];
+static size_t ma_idx   = 0;
+static size_t ma_count = 0;
+
+// Timers
+static uint32_t lastSensorReadMs   = 0;
+static uint32_t lastFirebasePushMs = 0;
+static uint32_t lastCommandPollMs  = 0;
+static uint32_t lastWiFiTryMs      = 0;
+
+// WiFi state
+static bool wifi_connected_once = false;
 
 // ========================= HELPERS =========================
-static String rootPath() {
-  return String("/devices/") + DEVICE_ID;
+static uint32_t nowMs() { return millis(); }
+
+static String buildRootPath() {
+  String p;
+  p.reserve(32);
+  p = "/devices/";
+  p.concat(DEVICE_ID);
+  return p;
 }
 
-static void logFirebaseError(FirebaseData &d, const char* ctx) {
-  String reason = d.errorReason();
-  Serial.printf("[Firebase] %s failed: %s\n", ctx, reason.c_str()); // fixed c_str usage
+static String buildPathLive() {
+  String p = buildRootPath();
+  p.concat("/live");
+  return p;
 }
 
-static void setRelayPin(int pin, bool on) {
-  // Active-low relay: ON = LOW, OFF = HIGH
-  if (relayActiveLow) digitalWrite(pin, on ? LOW : HIGH);
-  else                digitalWrite(pin, on ? HIGH : LOW);
+static String buildPathHistory() {
+  String p = buildRootPath();
+  p.concat("/history");
+  return p;
+}
+
+static String buildPathCommands() {
+  String p = buildRootPath();
+  p.concat("/commands");
+  return p;
+}
+
+static String buildPathConfig() {
+  String p = buildRootPath();
+  p.concat("/config");
+  return p;
+}
+
+static String joinPath(const String &base, const char *leaf) {
+  String p = base;
+  p.concat(leaf);
+  return p;
+}
+
+static void relayWrite(int pin, bool on) {
+  if (RELAY_ACTIVE_LOW) digitalWrite(pin, on ? LOW : HIGH);
+  else                  digitalWrite(pin, on ? HIGH : LOW);
 }
 
 static void setFan(bool on) {
-  fanOn = on;
-  setRelayPin(PIN_RELAY_FAN, on);
+  fan_on = on;
+  relayWrite(PIN_RELAY_FAN, on);
 }
 
 static void setHeater(bool on) {
-  heaterOn = on;
-  setRelayPin(PIN_RELAY_HEATER, on);
+  heater_on = on;
+  relayWrite(PIN_RELAY_HEATER, on);
 }
 
-static void ensureTime() {
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-  for (int i = 0; i < 25; i++) {
-    time_t now = time(nullptr);
-    if (now > 1700000000) {
-      Serial.println("[TIME] NTP synced");
+static void maReset() {
+  ma_idx = 0;
+  ma_count = 0;
+  for (size_t i = 0; i < MA_WINDOW; i++) ma_buf[i] = 0.0f;
+}
+
+static float maAdd(float v) {
+  ma_buf[ma_idx] = v;
+  ma_idx = (ma_idx + 1) % MA_WINDOW;
+  if (ma_count < MA_WINDOW) ma_count++;
+
+  float sum = 0.0f;
+  for (size_t i = 0; i < ma_count; i++) sum += ma_buf[i];
+  return (ma_count > 0) ? (sum / (float)ma_count) : v;
+}
+
+static float dryingProgressPct(float initial_g, float current_g) {
+  if (initial_g <= 1.0f) return 0.0f;
+  float loss = initial_g - current_g;
+  float pct = (loss / initial_g) * 100.0f;
+  if (pct < 0.0f) pct = 0.0f;
+  if (pct > 100.0f) pct = 100.0f;
+  return pct;
+}
+
+// ========================= BATTERY (OPTIONAL) =========================
+static const bool  BATTERY_ENABLED = true;
+static const float BAT_DIVIDER_RATIO = 4.70f; // CHANGE this to your resistor ratio
+static const float ADC_REF_V = 3.3f;
+static const int   ADC_MAX = 4095;
+
+static float readBatteryVoltage() {
+  if (!BATTERY_ENABLED) return NAN;
+
+  uint32_t sum = 0;
+  const int samples = 20;
+  for (int i = 0; i < samples; i++) {
+    sum += analogRead(PIN_BAT_ADC);
+    delay(2);
+  }
+  float adc = (float)sum / (float)samples;
+  float v_adc = (adc / (float)ADC_MAX) * ADC_REF_V;
+  return v_adc * BAT_DIVIDER_RATIO;
+}
+
+// ========================= HX711 =========================
+static void scaleInit() {
+  scale.begin(PIN_HX_DT, PIN_HX_SCK);
+  scale.set_scale(calibration_factor);
+  scale.tare();
+  maReset();
+}
+
+static bool readWeightOnce(float &out_g) {
+  if (!scale.is_ready()) return false;
+  float w = scale.get_units(5);
+  out_g = w;
+  return true;
+}
+
+static void tareScale() {
+  scale.tare();
+  maReset();
+  float w = 0.0f;
+  if (readWeightOnce(w)) filteredWeight_g = w;
+  Serial.println("[HX711] Tare complete");
+}
+
+// ========================= I2C SENSORS =========================
+static void sensorsInit() {
+  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+
+  bme_ok = bme.begin(0x76);
+  if (bme_ok) Serial.println("[BME280] OK");
+  else        Serial.println("[BME280] NOT FOUND (check wiring/address)");
+
+  bh_ok = lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
+  if (bh_ok) Serial.println("[BH1750] OK");
+  else       Serial.println("[BH1750] NOT FOUND (check wiring)");
+}
+
+static void readAllSensors() {
+  float w = 0.0f;
+  if (readWeightOnce(w)) {
+    currentWeight_g  = w;
+    filteredWeight_g = maAdd(w);
+  }
+
+  if (bme_ok) {
+    temp_c = bme.readTemperature();
+    hum_pct = bme.readHumidity();
+    pres_hpa = bme.readPressure() / 100.0f;
+  }
+
+  if (bh_ok) {
+    lux = lightMeter.readLightLevel();
+  }
+
+  battery_v = readBatteryVoltage();
+}
+
+// ========================= HEATER CONTROL =========================
+static void heaterControlLogic() {
+  if (auto_heat_enabled && !manual_heater_mode) {
+    if (isnan(temp_c)) {
+      setHeater(false);
+      return;
+    }
+
+    if (!heater_on && temp_c < (target_temp_c - HEAT_HYST_C)) {
+      setHeater(true);
+    } else if (heater_on && temp_c > (target_temp_c + HEAT_HYST_C)) {
+      setHeater(false);
+    }
+  }
+}
+
+// ========================= WIFI =========================
+static bool startConfigPortal() {
+  WiFiManager wm;
+  wm.setConfigPortalTimeout(PORTAL_TIMEOUT_SEC);
+
+  Serial.println("[WiFi] Starting config portal (AP: HelaDry-Setup)...");
+  bool ok = wm.startConfigPortal("HelaDry-Setup");
+
+  if (ok) {
+    Serial.print("[WiFi] Connected after portal. IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("[WiFi] Portal timeout/no config saved.");
+  }
+  return ok;
+}
+
+static void wifiInit() {
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+
+  pinMode(BOOT_BTN, INPUT_PULLUP);
+  bool forcePortal = (digitalRead(BOOT_BTN) == LOW);
+
+  if (forcePortal) {
+    startConfigPortal();
+    wifi_connected_once = (WiFi.status() == WL_CONNECTED);
+    return;
+  }
+
+  Serial.println("[WiFi] Trying saved WiFi...");
+  WiFi.begin(); // saved creds
+
+  uint32_t t0 = nowMs();
+  while (nowMs() - t0 < WIFI_WAIT_MS) {
+    if (WiFi.status() == WL_CONNECTED) {
+      wifi_connected_once = true;
+      Serial.print("[WiFi] Connected. IP: ");
+      Serial.println(WiFi.localIP());
       return;
     }
     delay(200);
   }
-  Serial.println("[TIME] NTP not synced yet (will continue).");
+
+  Serial.println("[WiFi] Saved WiFi not connected. Opening portal...");
+  startConfigPortal();
+  wifi_connected_once = (WiFi.status() == WL_CONNECTED);
 }
 
-static uint64_t nowEpochMs() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return (uint64_t)tv.tv_sec * 1000ULL + (uint64_t)(tv.tv_usec / 1000ULL);
-}
-
-static String nowISO8601() {
-  time_t now = time(nullptr);
-  struct tm t;
-  gmtime_r(&now, &t);
-  char buf[25];
-  strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &t);
-  return String(buf);
-}
-
-static void wifiEnsureConnected() {
+static void wifiMaintain() {
   if (WiFi.status() == WL_CONNECTED) return;
 
-  uint32_t now = millis();
-  if (now - lastWifiAttemptMs < WIFI_RETRY_MS) return;
-  lastWifiAttemptMs = now;
+  if (nowMs() - lastWiFiTryMs < WIFI_RECONNECT_INTERVAL_MS) return;
+  lastWiFiTryMs = nowMs();
 
-  Serial.printf("[WiFi] Connecting to %s ...\n", WIFI_SSID);
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  Serial.println("[WiFi] Disconnected. Reconnecting...");
+  WiFi.reconnect();
+}
 
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 12000) {
-    delay(250);
-    Serial.print(".");
+// ========================= FIREBASE =========================
+static void firebaseInitIfWiFi() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[Firebase] Skipped init (no WiFi).");
+    return;
   }
-  Serial.println();
 
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.printf("[WiFi] Connected: %s\n", WiFi.localIP().toString().c_str());
-    ensureTime();
-  } else {
-    Serial.println("[WiFi] Still not connected (will retry).");
-  }
-}
-
-static float movingAverage(float x) {
-  maBuf[maIdx] = x;
-  maIdx = (maIdx + 1) % MA_WINDOW;
-  if (maCount < MA_WINDOW) maCount++;
-
-  float sum = 0;
-  for (size_t i = 0; i < maCount; i++) sum += maBuf[i];
-  return sum / (float)maCount;
-}
-
-static void loadSettingsFromNVS() {
-  prefs.begin(NVS_NS, true);
-  if (prefs.isKey(NVS_KEY_CAL)) {
-    calibrationFactor = prefs.getFloat(NVS_KEY_CAL, calibrationFactor);
-  }
-  if (prefs.isKey(NVS_KEY_RELAYLOW)) {
-    relayActiveLow = prefs.getBool(NVS_KEY_RELAYLOW, relayActiveLow);
-  }
-  prefs.end();
-
-  Serial.printf("[NVS] calibrationFactor=%.4f relayActiveLow=%s\n",
-                calibrationFactor, relayActiveLow ? "true" : "false");
-}
-
-static void saveCalibrationToNVS(float cf) {
-  prefs.begin(NVS_NS, false);
-  prefs.putFloat(NVS_KEY_CAL, cf);
-  prefs.end();
-}
-
-static void saveRelayLogicToNVS(bool activeLow) {
-  prefs.begin(NVS_NS, false);
-  prefs.putBool(NVS_KEY_RELAYLOW, activeLow);
-  prefs.end();
-}
-
-static bool firebaseReady() {
-  return (WiFi.status() == WL_CONNECTED) && Firebase.ready();
-}
-
-static void firebaseInit() {
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
 
@@ -226,324 +348,262 @@ static void firebaseInit() {
   auth.user.password = USER_PASSWORD;
 
   config.token_status_callback = tokenStatusCallback;
-
-  Firebase.reconnectNetwork(true);
-  fbdo.setResponseSize(4096);
-  stream.setResponseSize(4096);
-
+  Firebase.reconnectWiFi(true);
   Firebase.begin(&config, &auth);
+
+  fbdo.setResponseSize(4096);
+  Serial.println("[Firebase] Init done.");
 }
 
-// Push /live values (overwrite)
-static void pushLive(float wRaw, float wFilt, float progress,
-                     float tempC, float humPct, float lux) {
-  String base = rootPath() + "/live";
+static void pushLiveToFirebase() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (!Firebase.ready()) return;
 
   FirebaseJson json;
-  json.set("weight_g_raw", wRaw);
-  json.set("weight_g", wFilt);
-  json.set("progress_pct", progress);
-  json.set("fan_on", fanOn);
-  json.set("heater_on", heaterOn);
-  json.set("temp_c", tempC);
-  json.set("hum_pct", humPct);
-  json.set("lux", lux);
-  json.set("timestamp_ms", (uint64_t)nowEpochMs());
-  json.set("timestamp_iso", nowISO8601());
+  json.set("weight_g", filteredWeight_g);
+  json.set("fan_on", fan_on);
+  json.set("heater_on", heater_on);
 
-  if (!Firebase.RTDB.setJSON(&fbdo, base.c_str(), &json)) {
-    logFirebaseError(fbdo, "setJSON(/live)");
+  json.set("temp_c", temp_c);
+  json.set("hum_pct", hum_pct);
+  json.set("pres_hpa", pres_hpa);
+  json.set("lux", lux);
+  json.set("battery_v", battery_v);
+
+  json.set("manual_fan_mode", manual_fan_mode);
+  json.set("manual_heater_mode", manual_heater_mode);
+  json.set("auto_heat_enabled", auto_heat_enabled);
+  json.set("target_temp_c", target_temp_c);
+
+  json.set("initial_weight_g", initialWeight_g);
+  json.set("progress_pct", dryingProgressPct(initialWeight_g, filteredWeight_g));
+  json.set("ts_ms", (int)nowMs());
+
+  String livePath = buildPathLive();
+
+  if (!Firebase.RTDB.setJSON(&fbdo, livePath.c_str(), &json)) {
+    Serial.print("[Firebase] Live push failed: ");
+    Serial.println(fbdo.errorReason().c_str());
   }
 }
 
-// Push /history log (append)
-static void pushHistory(float wFilt, float progress,
-                        float tempC, float humPct, float lux) {
-  String base = rootPath() + "/history";
+static void pushHistoryToFirebase() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (!Firebase.ready()) return;
 
   FirebaseJson json;
-  json.set("weight_g", wFilt);
-  json.set("progress_pct", progress);
-  json.set("fan_on", fanOn);
-  json.set("heater_on", heaterOn);
-  json.set("temp_c", tempC);
-  json.set("hum_pct", humPct);
+  json.set("weight_g", filteredWeight_g);
+  json.set("fan_on", fan_on);
+  json.set("heater_on", heater_on);
+  json.set("temp_c", temp_c);
+  json.set("hum_pct", hum_pct);
   json.set("lux", lux);
-  json.set("timestamp_ms", (uint64_t)nowEpochMs());
-  json.set("timestamp_iso", nowISO8601());
+  json.set("battery_v", battery_v);
+  json.set("progress_pct", dryingProgressPct(initialWeight_g, filteredWeight_g));
+  json.set("ts_ms", (int)nowMs());
 
-  if (!Firebase.RTDB.pushJSON(&fbdo, base.c_str(), &json)) {
-    logFirebaseError(fbdo, "pushJSON(/history)");
+  String histPath = buildPathHistory();
+
+  if (!Firebase.RTDB.pushJSON(&fbdo, histPath.c_str(), &json)) {
+    Serial.print("[Firebase] History push failed: ");
+    Serial.println(fbdo.errorReason().c_str());
   }
 }
 
-static float computeProgress(float current_g) {
-  if (!sessionActive || initialWeight_g <= 0.1f) return 0.0f;
-  float pct = (1.0f - (current_g / initialWeight_g)) * 100.0f;
-  if (pct < 0) pct = 0;
-  if (pct > 100) pct = 100;
-  return pct;
+static bool getBoolAt(const String &path, bool &out) {
+  if (WiFi.status() != WL_CONNECTED) return false;
+  if (!Firebase.ready()) return false;
+  if (Firebase.RTDB.getBool(&fbdo, path.c_str())) {
+    out = fbdo.boolData();
+    return true;
+  }
+  return false;
 }
 
-// ===================== COMMAND HANDLING =====================
-// Commands node: /devices/<id>/commands
-static void handleCommandsOnce() {
-  if (!firebaseReady()) return;
+static bool getFloatAt(const String &path, float &out) {
+  if (WiFi.status() != WL_CONNECTED) return false;
+  if (!Firebase.ready()) return false;
+  if (Firebase.RTDB.getFloat(&fbdo, path.c_str())) {
+    out = fbdo.floatData();
+    return true;
+  }
+  return false;
+}
 
-  String base = rootPath() + "/commands";
+static void setBoolAt(const String &path, bool v) {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (!Firebase.ready()) return;
+  if (!Firebase.RTDB.setBool(&fbdo, path.c_str(), v)) {
+    Serial.print("[Firebase] setBool failed: ");
+    Serial.println(fbdo.errorReason().c_str());
+  }
+}
 
-  // One-shot tare
-  if (Firebase.RTDB.getBool(&fbdo, (base + "/tare").c_str())) {
-    bool trig = fbdo.boolData();
-    if (trig) {
-      Serial.println("[CMD] tare");
-      scale.tare();
-      initialWeight_g = 0.0f;
-      Firebase.RTDB.setBool(&fbdo, (base + "/tare").c_str(), false);
-      Firebase.RTDB.setFloat(&fbdo, (rootPath() + "/session/initial_weight_g").c_str(), 0.0f);
+static void pollCommands() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  if (!Firebase.ready()) return;
+
+  String cmdBase = buildPathCommands();
+  String cfgBase = buildPathConfig();
+  (void)cfgBase;
+
+  // tare
+  {
+    String p = joinPath(cmdBase, "/tare");
+    bool v = false;
+    if (getBoolAt(p, v) && v) {
+      tareScale();
+      setBoolAt(p, false);
     }
   }
 
-  // Start session one-shot -> capture initial weight
-  if (Firebase.RTDB.getBool(&fbdo, (base + "/start_session").c_str())) {
-    bool trig = fbdo.boolData();
-    if (trig) {
-      sessionActive = true;
-      float w = movingAverage(scale.get_units(10));
-      if (fabs(w) < 1.0f) w = 0.0f;
-      initialWeight_g = w > 0.1f ? w : 0.0f;
-      Serial.printf("[CMD] start_session -> initialWeight=%.2f\n", initialWeight_g);
-
-      Firebase.RTDB.setBool(&fbdo, (base + "/start_session").c_str(), false);
-      Firebase.RTDB.setBool(&fbdo, (rootPath() + "/session/active").c_str(), sessionActive);
-      Firebase.RTDB.setFloat(&fbdo, (rootPath() + "/session/initial_weight_g").c_str(), initialWeight_g);
-
-      lastTrendCheckMs = 0; // reset stall state
+  // set initial weight
+  {
+    String p = joinPath(cmdBase, "/set_initial_weight");
+    bool v = false;
+    if (getBoolAt(p, v) && v) {
+      initialWeight_g = filteredWeight_g;
+      Serial.print("[CMD] initialWeight_g set = ");
+      Serial.println(initialWeight_g);
+      setBoolAt(p, false);
     }
   }
 
-  // Stop session
-  if (Firebase.RTDB.getBool(&fbdo, (base + "/stop_session").c_str())) {
-    bool trig = fbdo.boolData();
-    if (trig) {
-      Serial.println("[CMD] stop_session");
-      sessionActive = false;
-      initialWeight_g = 0.0f;
+  // manual fan
+  {
+    String p = joinPath(cmdBase, "/manual_fan_trigger");
+    bool v = false;
+    if (getBoolAt(p, v)) {
+      manual_fan_mode = v;
+      if (manual_fan_mode) setFan(true);
+    }
+  }
+
+  // fan force off
+  {
+    String p = joinPath(cmdBase, "/fan_force_off");
+    bool v = false;
+    if (getBoolAt(p, v) && v) {
+      manual_fan_mode = true;
       setFan(false);
+    }
+  }
+
+  // heater manual on
+  {
+    String p = joinPath(cmdBase, "/heater_manual_on");
+    bool v = false;
+    if (getBoolAt(p, v)) {
+      manual_heater_mode = v;
+      if (manual_heater_mode) setHeater(true);
+    }
+  }
+
+  // heater force off
+  {
+    String p = joinPath(cmdBase, "/heater_force_off");
+    bool v = false;
+    if (getBoolAt(p, v) && v) {
+      manual_heater_mode = true;
       setHeater(false);
-
-      Firebase.RTDB.setBool(&fbdo, (base + "/stop_session").c_str(), false);
-      Firebase.RTDB.setBool(&fbdo, (rootPath() + "/session/active").c_str(), sessionActive);
-      Firebase.RTDB.setFloat(&fbdo, (rootPath() + "/session/initial_weight_g").c_str(), 0.0f);
-
-      lastTrendCheckMs = 0;
     }
   }
 
-  // Manual controls (continuous)
-  if (Firebase.RTDB.getBool(&fbdo, (base + "/manual_fan").c_str())) {
-    setFan(fbdo.boolData());
-  }
-  if (Firebase.RTDB.getBool(&fbdo, (base + "/manual_heater").c_str())) {
-    setHeater(fbdo.boolData());
+  // auto heat enabled
+  {
+    String p = joinPath(cfgBase, "/auto_heat_enabled");
+    bool v = false;
+    if (getBoolAt(p, v)) auto_heat_enabled = v;
   }
 
-  // One-shot manual trigger (if true => turn ON then reset false)
-  if (Firebase.RTDB.getBool(&fbdo, (base + "/manual_fan_trigger").c_str())) {
-    bool trig = fbdo.boolData();
-    if (trig) {
-      Serial.println("[CMD] manual_fan_trigger -> Fan ON");
-      setFan(true);
-      Firebase.RTDB.setBool(&fbdo, (base + "/manual_fan_trigger").c_str(), false);
+  // target temp
+  {
+    String p = joinPath(cfgBase, "/target_temp_c");
+    float t = target_temp_c;
+    if (getFloatAt(p, t)) target_temp_c = t;
+  }
+
+  // calibration factor
+  {
+    String p = joinPath(cfgBase, "/calibration_factor");
+    float cf = calibration_factor;
+    if (getFloatAt(p, cf)) {
+      if (fabs(cf - calibration_factor) > 0.0001f) {
+        calibration_factor = cf;
+        scale.set_scale(calibration_factor);
+        Serial.print("[CFG] calibration_factor = ");
+        Serial.println(calibration_factor);
+      }
     }
-  }
-
-  // Settings pull (optional poll)
-  if (Firebase.RTDB.getFloat(&fbdo, (rootPath() + "/settings/calibration_factor").c_str())) {
-    float cf = fbdo.floatData();
-    if (isfinite(cf) && fabs(cf) > 0.01f && cf != calibrationFactor) {
-      calibrationFactor = cf;
-      scale.set_scale(calibrationFactor);
-      saveCalibrationToNVS(calibrationFactor);
-      Serial.printf("[SET] calibrationFactor updated: %.4f\n", calibrationFactor);
-    }
-  }
-
-  if (Firebase.RTDB.getBool(&fbdo, (rootPath() + "/settings/relay_active_low").c_str())) {
-    bool v = fbdo.boolData();
-    if (v != relayActiveLow) {
-      relayActiveLow = v;
-      saveRelayLogicToNVS(relayActiveLow);
-      setFan(fanOn);
-      setHeater(heaterOn);
-      Serial.printf("[SET] relayActiveLow=%s\n", relayActiveLow ? "true" : "false");
-    }
-  }
-
-  if (Firebase.RTDB.getFloat(&fbdo, (rootPath() + "/settings/min_drop_g_per_min").c_str())) {
-    float v = fbdo.floatData();
-    if (isfinite(v) && v >= 0.0f) minDrop_g_per_min = v;
-  }
-
-  if (Firebase.RTDB.getInt(&fbdo, (rootPath() + "/settings/stall_minutes").c_str())) {
-    int v = fbdo.intData();
-    if (v >= 1 && v <= 60) stallMinutes = v;
   }
 }
-// ============================================================
 
-// ========================= SENSOR READ =========================
-static bool bmeOk = false;
-static bool bhOk  = false;
-
-static void initSensors() {
-  Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-
-  bmeOk = bme.begin(0x76);
-  if (!bmeOk) {
-    bmeOk = bme.begin(0x77);
-  }
-  Serial.printf("[BME280] %s\n", bmeOk ? "OK" : "NOT FOUND");
-
-  bhOk = lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
-  Serial.printf("[BH1750] %s\n", bhOk ? "OK" : "NOT FOUND");
+// ========================= SERIAL PRINT =========================
+static void printSensorLine() {
+  Serial.print("[SENS] W=");
+  Serial.print(filteredWeight_g, 2);
+  Serial.print("g  T=");
+  if (isnan(temp_c)) Serial.print("NaN"); else Serial.print(temp_c, 2);
+  Serial.print("C  H=");
+  if (isnan(hum_pct)) Serial.print("NaN"); else Serial.print(hum_pct, 1);
+  Serial.print("%  P=");
+  if (isnan(pres_hpa)) Serial.print("NaN"); else Serial.print(pres_hpa, 1);
+  Serial.print("hPa  LUX=");
+  if (isnan(lux)) Serial.print("NaN"); else Serial.print(lux, 1);
+  Serial.print("  BAT=");
+  if (isnan(battery_v)) Serial.print("NaN"); else Serial.print(battery_v, 2);
+  Serial.print("V  FAN=");
+  Serial.print(fan_on ? "ON" : "OFF");
+  Serial.print("  HEAT=");
+  Serial.println(heater_on ? "ON" : "OFF");
 }
-// =============================================================
 
-// ========================= SETUP/LOOP =========================
+// ========================= SETUP / LOOP =========================
 void setup() {
   Serial.begin(115200);
   delay(200);
 
-  // Relay pins
   pinMode(PIN_RELAY_FAN, OUTPUT);
   pinMode(PIN_RELAY_HEATER, OUTPUT);
-
-  // Default OFF safely (assume active-low first; corrected after NVS load)
-  digitalWrite(PIN_RELAY_FAN, HIGH);
-  digitalWrite(PIN_RELAY_HEATER, HIGH);
-
-  loadSettingsFromNVS();
-
-  // Apply safe OFF with correct logic
   setFan(false);
   setHeater(false);
 
-  // WiFi + time
-  wifiEnsureConnected();
-
-  // HX711
-  scale.begin(PIN_HX_DT, PIN_HX_SCK);
-  scale.set_scale(calibrationFactor);
-  scale.tare();
-  Serial.printf("[HX711] scale ready, cal=%.4f\n", calibrationFactor);
-
-  initSensors();
-
-  // Firebase
-  firebaseInit();
-
-  // Initialize DB defaults (optional)
-  if (firebaseReady()) {
-    Firebase.RTDB.setBool(&fbdo, (rootPath() + "/session/active").c_str(), false);
-    Firebase.RTDB.setFloat(&fbdo, (rootPath() + "/session/initial_weight_g").c_str(), 0.0f);
+  if (BATTERY_ENABLED) {
+    analogReadResolution(12);
+    pinMode(PIN_BAT_ADC, INPUT);
   }
 
-  Serial.println("[SYSTEM] Ready");
+  Serial.println("=== HelaDry Firmware Boot ===");
+
+  sensorsInit();
+  scaleInit();
+
+  wifiInit();
+  firebaseInitIfWiFi();
+
+  Serial.println("=== Started. Sensor readings will print every 2s ===");
 }
 
 void loop() {
-  wifiEnsureConnected();
+  wifiMaintain();
 
-  // Keep Firebase token/network healthy
-  // (Firebase.reconnectNetwork(true) is already enabled)
-  if (firebaseReady()) {
-    // Backup command poll (simple + reliable)
-    uint32_t now = millis();
-    if (now - lastCmdPollMs >= COMMAND_POLL_MS) {
-      lastCmdPollMs = now;
-      handleCommandsOnce();
-    }
+  uint32_t now = nowMs();
+
+  if (now - lastSensorReadMs >= SENSOR_READ_INTERVAL_MS) {
+    lastSensorReadMs = now;
+    readAllSensors();
+    heaterControlLogic();
+    printSensorLine();
   }
 
-  // Periodic sensor read + push
-  uint32_t now = millis();
-  if (now - lastReadMs >= READ_INTERVAL_MS) {
-    lastReadMs = now;
-
-    if (!scale.is_ready()) {
-      Serial.println("[HX711] not ready");
-      return;
-    }
-
-    float wRaw = scale.get_units(5);
-    float wFilt = movingAverage(wRaw);
-
-    // Optional: clamp tiny noise to 0
-    if (fabs(wFilt) < 0.5f) wFilt = 0.0f;
-
-    float tempC = NAN, humPct = NAN, lux = NAN;
-    if (bmeOk) {
-      tempC = bme.readTemperature();
-      humPct = bme.readHumidity();
-    }
-    if (bhOk) {
-      lux = lightMeter.readLightLevel();
-    }
-
-    // If session active and initial not set, capture a reasonable initial weight
-    if (sessionActive && initialWeight_g <= 0.1f && wFilt > 1.0f) {
-      initialWeight_g = wFilt;
-      Serial.printf("[SESSION] initialWeight auto-set: %.2f g\n", initialWeight_g);
-      if (firebaseReady()) {
-        Firebase.RTDB.setFloat(&fbdo, (rootPath() + "/session/initial_weight_g").c_str(), initialWeight_g);
-      }
-      lastTrendCheckMs = 0;
-    }
-
-    float progress = computeProgress(wFilt);
-
-    // Auto stall detection -> fan on
-    if (sessionActive) {
-      if (lastTrendCheckMs == 0) {
-        lastTrendCheckMs = now;
-        lastTrendWeight_g = wFilt;
-      } else {
-        uint32_t elapsed = now - lastTrendCheckMs;
-        uint32_t windowMs = (uint32_t)stallMinutes * 60UL * 1000UL;
-        if (elapsed >= windowMs) {
-          float delta = wFilt - lastTrendWeight_g; // should be negative if drying
-          float mins = (float)elapsed / 60000.0f;
-          float dropPerMin = (-delta) / (mins > 0.01f ? mins : 1.0f);
-
-          Serial.printf("[STALL] delta=%.2f g over %.2f min => drop/min=%.3f g (min=%.3f)\n",
-                        delta, mins, dropPerMin, minDrop_g_per_min);
-
-          if (dropPerMin < minDrop_g_per_min) {
-            Serial.println("[AUTO] stall detected -> Fan ON");
-            setFan(true);
-          }
-
-          lastTrendCheckMs = now;
-          lastTrendWeight_g = wFilt;
-        }
-      }
-    } else {
-      lastTrendCheckMs = 0;
-      lastTrendWeight_g = 0;
-    }
-
-    // Firebase pushes
-    if (firebaseReady()) {
-      pushLive(wRaw, wFilt, progress, tempC, humPct, lux);
-      pushHistory(wFilt, progress, tempC, humPct, lux);
-    }
-
-    Serial.printf("[DATA] raw=%.2f g filt=%.2f g prog=%.1f%% fan=%s heater=%s\n",
-                  wRaw, wFilt, progress,
-                  fanOn ? "ON" : "OFF",
-                  heaterOn ? "ON" : "OFF");
+  if (now - lastCommandPollMs >= COMMAND_POLL_INTERVAL_MS) {
+    lastCommandPollMs = now;
+    pollCommands();
   }
 
-  delay(5);
+  if (now - lastFirebasePushMs >= FIREBASE_PUSH_INTERVAL_MS) {
+    lastFirebasePushMs = now;
+    pushLiveToFirebase();
+    pushHistoryToFirebase();
+  }
 }
