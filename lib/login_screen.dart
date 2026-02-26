@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -10,83 +11,145 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _authService = AuthService();
-
-  // Controllers to grab the text from the input fields
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  // Boolean to toggle between Login and Signup view
-  bool _isLogin = true;
+  bool _isLoginMode = true;
+  bool _isLoading = false;
 
-  void _submitForm() {
-    // Just printing for now to make sure controllers are working
-    print("User entered: ${_emailController.text}");
+  // Finalized Logic for Firebase
+  Future<void> _processAuth() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
 
-    // Need to add validation and loading spinner here later
+    // Basic human-written validation
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please fill in all fields"),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(16),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      if (_isLoginMode) {
+        // checks the boolean for true, if false user need to Signup
+        await _authService.signIn(
+          // since talking to databse takes time,
+          email, // await tells wait for response.
+          password, // trim to remove accidental spaces.
+        );
+      } else {
+        await _authService.signUp(email, password);
+      }
+
+      if (!mounted) return;
+
+      // Navigate to Dashboard on success removing the previous screen.
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+      );
+    } catch (exception) {
+      // Show user-friendly error
+      ScaffoldMessenger.of(
+        context, // the map tells flutter, where widget sits in app tree.
+      ).showSnackBar(
+        SnackBar(
+          content: Text("Auth Error: ${exception.toString()}"),
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(16),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("HelaDry - Auth"), centerTitle: true),
-      body: SingleChildScrollView(
-        // Added this to prevent keyboard overflow issues
-        padding: const EdgeInsets.symmetric(horizontal: 25.0, vertical: 50.0),
-        child: Column(
-          children: [
-            // Placeholder for Logo
-            const Icon(Icons.lock_person, size: 60),
-            const SizedBox(height: 20),
-
-            const Text(
-              "Account Access",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 30),
-
-            // Email Input
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: "EmailId",
-                hintText: "example@mail.com",
-                border: OutlineInputBorder(),
+      // The Scaffold provides the basic visual structure for this screen,
+      backgroundColor: const Color(0xFFF7FFF9), // Very light mint green
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(30),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Updated Branding for HelaDry
+              const Icon(Icons.wb_sunny, size: 70, color: Colors.green),
+              const SizedBox(height: 10),
+              const Text(
+                "HelaDry",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
               ),
-            ),
-            const SizedBox(height: 15),
+              const SizedBox(height: 40),
 
-            // Password Input
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: "Password",
-                border: OutlineInputBorder(),
+              TextField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: "Email",
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 30),
+              const SizedBox(height: 15),
 
-            // Main Action Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _submitForm,
-                child: Text(_isLogin ? "Login" : "Sign Up"),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: "Password",
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(height: 25),
 
-            // Toggle between Login/Signup
-            TextButton(
-              onPressed: () {
-                setState(() => _isLogin = !_isLogin);
-              },
-              child: Text(
-                _isLogin
-                    ? "Don't have an account? Register"
-                    : "Already registered? Login here",
+              // Loading Spinner or Button
+              _isLoading
+                  ? const CircularProgressIndicator(color: Colors.green)
+                  : SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors
+                              .green
+                              .shade600, // Slightly lighter than 700
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: _processAuth,
+                        child: Text(_isLoginMode ? "Login" : "Create Account"),
+                      ),
+                    ),
+
+              TextButton(
+                onPressed: () => setState(() => _isLoginMode = !_isLoginMode),
+                child: Text(
+                  _isLoginMode ? "New here? Join us" : "Back to Login",
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

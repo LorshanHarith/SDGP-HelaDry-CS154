@@ -2,6 +2,7 @@ import 'drying_guide_screen.dart';
 import 'package:flutter/material.dart';
 import 'start_batch_screen.dart';
 import 'drying_report_screen.dart';
+import 'device_link_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -51,6 +52,21 @@ class DashboardScreen extends StatelessWidget {
                   textColor: Colors.blueAccent,
                 ),
                 const SizedBox(height: 16),
+
+                ElevatedButton(
+  onPressed: () async {
+    final service = DeviceLinkService();
+    await service.linkDeviceToCurrentUser('device_001');
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Device linked ✅")),
+      );
+    }
+  },
+  child: const Text("Link device_001"),
+),
+const SizedBox(height: 16),
                 // THE ACTIVE BATCH currently shows at all times not when drying active
                 Container(
                   padding: const EdgeInsets.all(20),
