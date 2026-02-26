@@ -17,7 +17,10 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      return web;
+      throw UnsupportedError(
+        'DefaultFirebaseOptions have not been configured for web - '
+        'you can reconfigure this by running the FlutterFire CLI again.',
+      );
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -57,15 +60,4 @@ class DefaultFirebaseOptions {
     databaseURL: 'https://solar-dryer-iot-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'solar-dryer-iot.firebasestorage.app',
   );
-
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCiFayCZhCAH6KlFYKACCnEU3EUu3m9kBE',
-    appId: '1:762967530894:web:baa64a97e93d6cad7b98df',
-    messagingSenderId: '762967530894',
-    projectId: 'solar-dryer-iot',
-    authDomain: 'solar-dryer-iot.firebaseapp.com',
-    databaseURL: 'https://solar-dryer-iot-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'solar-dryer-iot.firebasestorage.app',
-  );
-
 }
