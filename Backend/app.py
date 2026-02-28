@@ -27,10 +27,3 @@ def firebase_required(f):
 
     return wrapper
 
-@app.route("/profile")
-@token_required
-def profile():
-    return jsonify({"message": "Access granted"})
-
-if __name__ == "__main__":
-    app.run(debug=True)
