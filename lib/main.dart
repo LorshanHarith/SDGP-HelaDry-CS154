@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
-import 'splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'login_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   runApp(const SolarDryingApp());
 }
 
@@ -17,7 +23,7 @@ class SolarDryingApp extends StatelessWidget {
         useMaterial3: true,
         colorSchemeSeed: const Color(0xFF13B546),
       ),
-      home: const SplashScreen(),
+      home: const LoginScreen(),
     );
   }
 }
