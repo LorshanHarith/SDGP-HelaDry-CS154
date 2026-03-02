@@ -1,31 +1,31 @@
-from flask import Flask, request, jsonify
-from functools import wraps
-import firebase_admin
-from firebase_admin import credentials, auth
+from flask import Flask
+from config import Config
+from extensions import init_firebase
 
-app = Flask(__name__)
+# Import route blueprints
+from routes.device_routes import device_bp
+from routes.sensor_routes import sensor_bp
+from routes.session_routes import session_bp
 
-cred = credentials.Certificate("")
-firebase_admin.initialize_app(cred)
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
-def firebase_required(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        auth_header = request.headers.get("Authorization")
+    # Initialize Firebase
+    init_firebase(app.config["FIREBASE_CERT_PATH"])
 
-        if not auth_header:
-            return jsonify({"error": "Token missing"}), 403
+    # Register Blueprints
+    app.register_blueprint(device_bp, url_prefix="/device")
+    app.register_blueprint(sensor_bp, url_prefix="/sensor")
+    app.register_blueprint(session_bp, url_prefix="/session")
 
-        try:
-            token = auth_header.split(" ")[1]
-            decoded_token = auth.verify_id_token(token)
-            request.user = decoded_token
-        except:
-            return jsonify({"error": "Invalid Firebase token"}), 403
+    return app
 
-        return f(*args, **kwargs)
 
-    return wrapper
+app = create_app()
+
+if __name__ == "__main__":
+    app.run(debug=True)
 
 
 
