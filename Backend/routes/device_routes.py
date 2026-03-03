@@ -1,37 +1,62 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify,g
 from ..middleware.auth_middleware import firebase_required
-from ..services.device_services import start_device, stop_device
+from ..services.device_service import start_device, stop_device
 from ..utils.validators import validate_temperature
 from ..utils.responses import success, error
 
 device_bp = Blueprint("device", __name__)
 
+
 @device_bp.route("/start", methods=["POST"])
 @firebase_required
 def start():
-    data = request.json
-    device_id = data.get("device_id")
-    temperature = data.get("temperature")
+    try:
+        data = request.get_json()
 
-    if not device_id:
-        return jsonify(error("device_id is required")), 400
+        if not data:
+            return jsonify(error("Request body is required")), 400
 
-    valid, message = validate_temperature(temperature)
-    if not valid:
-        return jsonify(error(message)), 400
+        device_id = data.get("device_id")
+        temperature = data.get("temperature")
 
-    result = start_device(request.user_id, device_id, temperature)
-    return jsonify(success(result))
+        if not device_id:
+            return jsonify(error("device_id is required")), 400
+
+        valid, message = validate_temperature(temperature)
+        if not valid:
+            return jsonify(error(message)), 400
+
+        result = start_device(g.user_id, device_id, temperature)
+
+        if "error" in result:
+            return jsonify(error(result["error"])), 403
+
+        return jsonify(success(result)), 200
+
+    except Exception as e:
+        return jsonify(error(str(e))), 500
 
 
 @device_bp.route("/stop", methods=["POST"])
 @firebase_required
 def stop():
-    data = request.json
-    device_id = data.get("device_id")
+    try:
+        data = request.get_json()
 
-    if not device_id:
-        return jsonify(error("device_id is required")), 400
+        if not data:
+            return jsonify(error("Request body is required")), 400
 
-    result = stop_device(request.user_id, device_id)
-    return jsonify(success(result))
+        device_id = data.get("device_id")
+
+        if not device_id:
+            return jsonify(error("device_id is required")), 400
+
+        result = stop_device(g.user_id, device_id)
+
+        if "error" in result:
+            return jsonify(error(result["error"])), 403
+
+        return jsonify(success(result)), 200
+
+    except Exception as e:
+        return jsonify(error(str(e))), 500

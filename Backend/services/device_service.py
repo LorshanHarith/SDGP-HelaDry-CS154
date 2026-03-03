@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 
 def start_device(user_id, device_id, temperature):
     try:
-        # Basic validation
         if temperature is None:
             return {"error": "Temperature is required"}
 
@@ -21,11 +20,9 @@ def start_device(user_id, device_id, temperature):
             return {"error": "Unauthorized access to device"}
 
         ref.update({
-            "status": "running",
-            "temperature": temperature,
-            "last_command": {
+            "command": {
                 "type": "start",
-                "value": temperature,
+                "target_temperature": temperature,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "source": "cloud"
             },
@@ -33,9 +30,9 @@ def start_device(user_id, device_id, temperature):
         })
 
         return {
-            "message": "Device started",
+            "message": "Start command sent",
             "device_id": device_id,
-            "temperature": temperature
+            "target_temperature": temperature
         }
 
     except Exception as e:
@@ -54,8 +51,7 @@ def stop_device(user_id, device_id):
             return {"error": "Unauthorized access to device"}
 
         ref.update({
-            "status": "stopped",
-            "last_command": {
+            "command": {
                 "type": "stop",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "source": "cloud"
@@ -64,7 +60,7 @@ def stop_device(user_id, device_id):
         })
 
         return {
-            "message": "Device stopped",
+            "message": "Stop command sent",
             "device_id": device_id
         }
 
