@@ -3,6 +3,7 @@ from ..middleware.auth_middleware import firebase_required
 from ..services.device_service import start_device, stop_device
 from ..utils.validators import validate_temperature
 from ..utils.responses import success, error
+from ..services.device_service import start_device, stop_device, get_user_devices
 
 device_bp = Blueprint("device", __name__)
 
@@ -60,3 +61,18 @@ def stop():
 
     except Exception as e:
         return jsonify(error(str(e))), 500
+    
+
+@device_bp.route("/list", methods=["GET"])
+@firebase_required
+def list_devices():
+    try:
+        result = get_user_devices(g.user_id)
+
+        if isinstance(result, dict) and "error" in result:
+            return jsonify(error(result["error"])), 500
+
+        return jsonify(success(result)), 200
+
+    except Exception:
+        return jsonify(error("Failed to fetch devices")), 500

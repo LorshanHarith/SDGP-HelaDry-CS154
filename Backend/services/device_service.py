@@ -96,3 +96,27 @@ def stop_device(user_id, device_id):
 
     except Exception:
         return {"error": "Failed to send stop command"}
+    
+def get_user_devices(user_id):
+    try:
+        devices_ref = db.reference("devices")
+        devices = devices_ref.get()
+
+        if not devices:
+            return []
+
+        user_devices = []
+
+        for device_id, device_data in devices.items():
+            if device_data.get("owner") == user_id:
+                user_devices.append({
+                    "device_id": device_id,
+                    "status": device_data.get("status", "unknown"),
+                    "last_updated": device_data.get("updated_at"),
+                    "last_seen": device_data.get("last_seen")
+                })
+
+        return user_devices
+
+    except Exception:
+        return {"error": "Failed to fetch devices"}
