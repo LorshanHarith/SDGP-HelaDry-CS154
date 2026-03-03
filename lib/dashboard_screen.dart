@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import 'drying_guide_screen.dart';
 import 'start_batch_screen.dart';
 import 'drying_report_screen.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
+import 'package:heladry/backend/services/device_link_service.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -85,23 +84,25 @@ class DashboardScreen extends StatelessWidget {
                 ElevatedButton(
                   //
                   onPressed: () async {
-                    final user = FirebaseAuth.instance.currentUser;
-                    if (user == null) return;
-
-                    final uid = user.uid;
-
-                    await FirebaseDatabase.instance.ref().update({
-                      'users/$uid/devices/device-001': true,
-                      'devices/device-001/owner': uid,
-                    });
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("Device linked ✅")),
+                    try {
+                      await DeviceLinkService().linkDeviceToCurrentUser(
+                        'device-001',
                       );
+
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Device linked ✅")),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Link failed: $e")),
+                        );
+                      }
                     }
                   },
-                  child: const Text("Link device-g001"),
+                  child: const Text("Link device-001"),
                 ),
                 const SizedBox(height: 16),
                 // THE ACTIVE BATCH currently shows at all times not when drying active
@@ -309,7 +310,7 @@ class DashboardCard extends StatelessWidget {
               color: textColor,
               fontSize: 18,
               fontWeight: FontWeight.bold,
-            ),
+            ),git add lib/dashboard_screen.dart
           ),
           Text(
             subtitle,
