@@ -1,8 +1,15 @@
 import os
 
+
 class Config:
-    DEBUG = True  # Change to False in production
+    DEBUG = os.getenv("FLASK_DEBUG", "True") == "True"
+
     FIREBASE_CERT_PATH = os.getenv(
         "FIREBASE_CERT_PATH",
-        "D:\\SDGP\\solar-dryer-iot-firebase-adminsdk-fbsvc-0e1fe49125.json"  # default for local dev
+        os.path.join(os.path.dirname(__file__), "firebase_key.json")
+    )
+
+    FIREBASE_DATABASE_URL = os.getenv(
+        "FIREBASE_DATABASE_URL",
+        "https://solar-dryer-iot-default-rtdb.asia-southeast1.firebasedatabase.app/"
     )
