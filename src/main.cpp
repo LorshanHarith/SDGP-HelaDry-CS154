@@ -3,13 +3,11 @@
 #include <WiFi.h>
 #include <WiFiManager.h>
 
-
 // BLE
 #include <BLE2902.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
-
 
 #include <Wire.h>
 
@@ -23,7 +21,6 @@
 #include <Firebase_ESP_Client.h>
 #include <addons/RTDBHelper.h>
 #include <addons/TokenHelper.h>
-
 
 // Secrets
 #include <secrets.h>
@@ -615,6 +612,67 @@ static void pollCommands() {
   }
 }
 
+// ========================= BLE CALLBACKS =========================
+class ServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pSvr) override {
+    bleConnected = true;
+    Serial.println("[BLE] Client connected");
+  }
+  void onDisconnect(BLEServer *pSvr) override {
+    bleConnected = false;
+    bleAdvertising = false;
+    Serial.println("[BLE] Client disconnected");
+  }
+};
+
+// ========================= BLE INIT =========================
+static void bleInit() {
+  bleDeviceName = generateBleId();
+  Serial.printf("[BLE] Device name: %s\n", bleDeviceName.c_str());
+
+  BLEDevice::init(bleDeviceName.c_str());
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new ServerCallbacks());
+
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+
+  // State characteristic (notify)
+  pStateChar = pService->createCharacteristic(
+      STATE_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pStateChar->addDescriptor(new BLE2902());
+
+  // Command characteristic (write)
+  pCommandChar = pService->createCharacteristic(
+      COMMAND_CHAR_UUID,
+      BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+
+  // ACK characteristic (notify)
+  pAckChar = pService->createCharacteristic(
+      ACK_CHAR_UUID,
+      BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pAckChar->addDescriptor(new BLE2902());
+
+  pService->start();
+
+  BLEAdvertising *pAdv = BLEDevice::getAdvertising();
+  pAdv->addServiceUUID(SERVICE_UUID);
+  pAdv->setScanResponse(true);
+  pAdv->setMinPreferred(0x06);
+  pAdv->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
+  bleAdvertising = true;
+  Serial.println("[BLE] Advertising started");
+}
+
+static void bleMaintainAdvertising() {
+  if (!bleConnected && !bleAdvertising) {
+    BLEDevice::startAdvertising();
+    bleAdvertising = true;
+    Serial.println("[BLE] Re-advertising");
+  }
+}
+
 // ========================= SERIAL PRINT =========================
 static void printSensorLine() {
   Serial.print("[SENS] W=");
@@ -670,14 +728,18 @@ void setup() {
   sensorsInit();
   scaleInit();
 
+  // Init BLE
+  bleInit();
+
   wifiInit();
   firebaseInitIfWiFi();
 
-  Serial.println("=== Started. Sensor readings will print every 2s ===");
+  Serial.println("=== Started. BLE active, sensor readings every 2s ===");
 }
 
 void loop() {
   wifiMaintain();
+  bleMaintainAdvertising();
 
   uint32_t now = nowMs();
 
