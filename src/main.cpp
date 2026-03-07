@@ -1,6 +1,16 @@
 #include <Arduino.h>
+#include <Preferences.h>
 #include <WiFi.h>
 #include <WiFiManager.h>
+
+
+// BLE
+#include <BLE2902.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+
+
 #include <Wire.h>
 
 #include <HX711.h>
@@ -11,24 +21,34 @@
 
 // Firebase (Mobizt)
 #include <Firebase_ESP_Client.h>
-#include <addons/TokenHelper.h>
 #include <addons/RTDBHelper.h>
+#include <addons/TokenHelper.h>
+
 
 // Secrets
 #include <secrets.h>
+
+// ========================= FIRMWARE VERSION =========================
+#define FW_VERSION "2.1.4"
 
 // ========================= DEVICE =========================
 #define DEVICE_ID "heladry_001"
 #define BOOT_BTN 0
 
+// ========================= BLE UUIDs =========================
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define STATE_CHAR_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define COMMAND_CHAR_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
+#define ACK_CHAR_UUID "beb5483e-36e1-4688-b7f5-ea07361b26aa"
+
 // ========================= PINOUT (DEFAULTS) =========================
 static const int PIN_I2C_SDA = 21;
 static const int PIN_I2C_SCL = 22;
 
-static const int PIN_HX_DT   = 18;
-static const int PIN_HX_SCK  = 19;
+static const int PIN_HX_DT = 18;
+static const int PIN_HX_SCK = 19;
 
-static const int PIN_RELAY_FAN    = 25;
+static const int PIN_RELAY_FAN = 25;
 static const int PIN_RELAY_HEATER = 26;
 
 // Battery monitor (optional)
@@ -38,19 +58,19 @@ static const int PIN_BAT_ADC = 34;
 static const bool RELAY_ACTIVE_LOW = true;
 
 // ========================= TIMING =========================
-static const uint32_t SENSOR_READ_INTERVAL_MS     = 2000;
-static const uint32_t FIREBASE_PUSH_INTERVAL_MS   = 5000;
-static const uint32_t COMMAND_POLL_INTERVAL_MS    = 2000;
+static const uint32_t SENSOR_READ_INTERVAL_MS = 2000;
+static const uint32_t FIREBASE_PUSH_INTERVAL_MS = 5000;
+static const uint32_t COMMAND_POLL_INTERVAL_MS = 2000;
 
-static const uint32_t WIFI_WAIT_MS                = 15000;
-static const uint32_t PORTAL_TIMEOUT_SEC          = 180;
-static const uint32_t WIFI_RECONNECT_INTERVAL_MS  = 5000;
+static const uint32_t WIFI_WAIT_MS = 15000;
+static const uint32_t PORTAL_TIMEOUT_SEC = 180;
+static const uint32_t WIFI_RECONNECT_INTERVAL_MS = 5000;
 
 // HX711 smoothing
-static const size_t   MA_WINDOW = 10;
+static const size_t MA_WINDOW = 10;
 
 // Heater auto control
-static const float    HEAT_HYST_C = 2.0f;
+static const float HEAT_HYST_C = 2.0f;
 
 // ========================= GLOBALS =========================
 HX711 scale;
@@ -58,17 +78,20 @@ Adafruit_BME280 bme;
 BH1750 lightMeter;
 
 bool bme_ok = false;
-bool bh_ok  = false;
+bool bh_ok = false;
 
 FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
+// Preferences (NVS)
+Preferences prefs;
+
 // Weight state
 static float calibration_factor = -7050.0f;
-static float initialWeight_g    = 0.0f;
-static float currentWeight_g    = 0.0f;
-static float filteredWeight_g   = 0.0f;
+static float initialWeight_g = 0.0f;
+static float currentWeight_g = 0.0f;
+static float filteredWeight_g = 0.0f;
 
 // Sensor state
 static float temp_c = NAN;
@@ -85,22 +108,31 @@ static bool heater_on = false;
 static bool manual_fan_mode = false;
 static bool manual_heater_mode = false;
 
-static bool  auto_heat_enabled = false;
+static bool auto_heat_enabled = false;
 static float target_temp_c = 35.0f;
 
 // Moving average buffer (HX711)
-static float  ma_buf[MA_WINDOW];
-static size_t ma_idx   = 0;
+static float ma_buf[MA_WINDOW];
+static size_t ma_idx = 0;
 static size_t ma_count = 0;
 
 // Timers
-static uint32_t lastSensorReadMs   = 0;
+static uint32_t lastSensorReadMs = 0;
 static uint32_t lastFirebasePushMs = 0;
-static uint32_t lastCommandPollMs  = 0;
-static uint32_t lastWiFiTryMs      = 0;
+static uint32_t lastCommandPollMs = 0;
+static uint32_t lastWiFiTryMs = 0;
 
 // WiFi state
 static bool wifi_connected_once = false;
+
+// BLE
+static BLEServer *pServer = nullptr;
+static BLECharacteristic *pStateChar = nullptr;
+static BLECharacteristic *pCommandChar = nullptr;
+static BLECharacteristic *pAckChar = nullptr;
+static bool bleConnected = false;
+static bool bleAdvertising = false;
+static String bleDeviceName = "HELADRY-0000";
 
 // ========================= HELPERS =========================
 static uint32_t nowMs() { return millis(); }
@@ -144,8 +176,10 @@ static String joinPath(const String &base, const char *leaf) {
 }
 
 static void relayWrite(int pin, bool on) {
-  if (RELAY_ACTIVE_LOW) digitalWrite(pin, on ? LOW : HIGH);
-  else                  digitalWrite(pin, on ? HIGH : LOW);
+  if (RELAY_ACTIVE_LOW)
+    digitalWrite(pin, on ? LOW : HIGH);
+  else
+    digitalWrite(pin, on ? HIGH : LOW);
 }
 
 static void setFan(bool on) {
@@ -161,36 +195,53 @@ static void setHeater(bool on) {
 static void maReset() {
   ma_idx = 0;
   ma_count = 0;
-  for (size_t i = 0; i < MA_WINDOW; i++) ma_buf[i] = 0.0f;
+  for (size_t i = 0; i < MA_WINDOW; i++)
+    ma_buf[i] = 0.0f;
 }
 
 static float maAdd(float v) {
   ma_buf[ma_idx] = v;
   ma_idx = (ma_idx + 1) % MA_WINDOW;
-  if (ma_count < MA_WINDOW) ma_count++;
+  if (ma_count < MA_WINDOW)
+    ma_count++;
 
   float sum = 0.0f;
-  for (size_t i = 0; i < ma_count; i++) sum += ma_buf[i];
+  for (size_t i = 0; i < ma_count; i++)
+    sum += ma_buf[i];
   return (ma_count > 0) ? (sum / (float)ma_count) : v;
 }
 
 static float dryingProgressPct(float initial_g, float current_g) {
-  if (initial_g <= 1.0f) return 0.0f;
+  if (initial_g <= 1.0f)
+    return 0.0f;
   float loss = initial_g - current_g;
   float pct = (loss / initial_g) * 100.0f;
-  if (pct < 0.0f) pct = 0.0f;
-  if (pct > 100.0f) pct = 100.0f;
+  if (pct < 0.0f)
+    pct = 0.0f;
+  if (pct > 100.0f)
+    pct = 100.0f;
   return pct;
 }
 
+// ========================= DEVICE ID GENERATION =========================
+static String generateBleId() {
+  uint8_t mac[6];
+  esp_efuse_mac_get_default(mac);
+  char id[5];
+  snprintf(id, sizeof(id), "%02X%02X", mac[4], mac[5]);
+  return String("HELADRY-") + id;
+}
+
 // ========================= BATTERY (OPTIONAL) =========================
-static const bool  BATTERY_ENABLED = true;
-static const float BAT_DIVIDER_RATIO = 4.70f; // CHANGE this to your resistor ratio
+static const bool BATTERY_ENABLED = true;
+static const float BAT_DIVIDER_RATIO =
+    4.70f; // CHANGE this to your resistor ratio
 static const float ADC_REF_V = 3.3f;
-static const int   ADC_MAX = 4095;
+static const int ADC_MAX = 4095;
 
 static float readBatteryVoltage() {
-  if (!BATTERY_ENABLED) return NAN;
+  if (!BATTERY_ENABLED)
+    return NAN;
 
   uint32_t sum = 0;
   const int samples = 20;
@@ -212,7 +263,8 @@ static void scaleInit() {
 }
 
 static bool readWeightOnce(float &out_g) {
-  if (!scale.is_ready()) return false;
+  if (!scale.is_ready())
+    return false;
   float w = scale.get_units(5);
   out_g = w;
   return true;
@@ -222,7 +274,8 @@ static void tareScale() {
   scale.tare();
   maReset();
   float w = 0.0f;
-  if (readWeightOnce(w)) filteredWeight_g = w;
+  if (readWeightOnce(w))
+    filteredWeight_g = w;
   Serial.println("[HX711] Tare complete");
 }
 
@@ -231,18 +284,22 @@ static void sensorsInit() {
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
 
   bme_ok = bme.begin(0x76);
-  if (bme_ok) Serial.println("[BME280] OK");
-  else        Serial.println("[BME280] NOT FOUND (check wiring/address)");
+  if (bme_ok)
+    Serial.println("[BME280] OK");
+  else
+    Serial.println("[BME280] NOT FOUND (check wiring/address)");
 
   bh_ok = lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
-  if (bh_ok) Serial.println("[BH1750] OK");
-  else       Serial.println("[BH1750] NOT FOUND (check wiring)");
+  if (bh_ok)
+    Serial.println("[BH1750] OK");
+  else
+    Serial.println("[BH1750] NOT FOUND (check wiring)");
 }
 
 static void readAllSensors() {
   float w = 0.0f;
   if (readWeightOnce(w)) {
-    currentWeight_g  = w;
+    currentWeight_g = w;
     filteredWeight_g = maAdd(w);
   }
 
@@ -325,9 +382,11 @@ static void wifiInit() {
 }
 
 static void wifiMaintain() {
-  if (WiFi.status() == WL_CONNECTED) return;
+  if (WiFi.status() == WL_CONNECTED)
+    return;
 
-  if (nowMs() - lastWiFiTryMs < WIFI_RECONNECT_INTERVAL_MS) return;
+  if (nowMs() - lastWiFiTryMs < WIFI_RECONNECT_INTERVAL_MS)
+    return;
   lastWiFiTryMs = nowMs();
 
   Serial.println("[WiFi] Disconnected. Reconnecting...");
@@ -356,8 +415,10 @@ static void firebaseInitIfWiFi() {
 }
 
 static void pushLiveToFirebase() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  if (!Firebase.ready()) return;
+  if (WiFi.status() != WL_CONNECTED)
+    return;
+  if (!Firebase.ready())
+    return;
 
   FirebaseJson json;
   json.set("weight_g", filteredWeight_g);
@@ -376,7 +437,8 @@ static void pushLiveToFirebase() {
   json.set("target_temp_c", target_temp_c);
 
   json.set("initial_weight_g", initialWeight_g);
-  json.set("progress_pct", dryingProgressPct(initialWeight_g, filteredWeight_g));
+  json.set("progress_pct",
+           dryingProgressPct(initialWeight_g, filteredWeight_g));
   json.set("ts_ms", (int)nowMs());
 
   String livePath = buildPathLive();
@@ -388,8 +450,10 @@ static void pushLiveToFirebase() {
 }
 
 static void pushHistoryToFirebase() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  if (!Firebase.ready()) return;
+  if (WiFi.status() != WL_CONNECTED)
+    return;
+  if (!Firebase.ready())
+    return;
 
   FirebaseJson json;
   json.set("weight_g", filteredWeight_g);
@@ -399,7 +463,8 @@ static void pushHistoryToFirebase() {
   json.set("hum_pct", hum_pct);
   json.set("lux", lux);
   json.set("battery_v", battery_v);
-  json.set("progress_pct", dryingProgressPct(initialWeight_g, filteredWeight_g));
+  json.set("progress_pct",
+           dryingProgressPct(initialWeight_g, filteredWeight_g));
   json.set("ts_ms", (int)nowMs());
 
   String histPath = buildPathHistory();
@@ -411,8 +476,10 @@ static void pushHistoryToFirebase() {
 }
 
 static bool getBoolAt(const String &path, bool &out) {
-  if (WiFi.status() != WL_CONNECTED) return false;
-  if (!Firebase.ready()) return false;
+  if (WiFi.status() != WL_CONNECTED)
+    return false;
+  if (!Firebase.ready())
+    return false;
   if (Firebase.RTDB.getBool(&fbdo, path.c_str())) {
     out = fbdo.boolData();
     return true;
@@ -421,8 +488,10 @@ static bool getBoolAt(const String &path, bool &out) {
 }
 
 static bool getFloatAt(const String &path, float &out) {
-  if (WiFi.status() != WL_CONNECTED) return false;
-  if (!Firebase.ready()) return false;
+  if (WiFi.status() != WL_CONNECTED)
+    return false;
+  if (!Firebase.ready())
+    return false;
   if (Firebase.RTDB.getFloat(&fbdo, path.c_str())) {
     out = fbdo.floatData();
     return true;
@@ -431,8 +500,10 @@ static bool getFloatAt(const String &path, float &out) {
 }
 
 static void setBoolAt(const String &path, bool v) {
-  if (WiFi.status() != WL_CONNECTED) return;
-  if (!Firebase.ready()) return;
+  if (WiFi.status() != WL_CONNECTED)
+    return;
+  if (!Firebase.ready())
+    return;
   if (!Firebase.RTDB.setBool(&fbdo, path.c_str(), v)) {
     Serial.print("[Firebase] setBool failed: ");
     Serial.println(fbdo.errorReason().c_str());
@@ -440,8 +511,10 @@ static void setBoolAt(const String &path, bool v) {
 }
 
 static void pollCommands() {
-  if (WiFi.status() != WL_CONNECTED) return;
-  if (!Firebase.ready()) return;
+  if (WiFi.status() != WL_CONNECTED)
+    return;
+  if (!Firebase.ready())
+    return;
 
   String cmdBase = buildPathCommands();
   String cfgBase = buildPathConfig();
@@ -475,7 +548,8 @@ static void pollCommands() {
     bool v = false;
     if (getBoolAt(p, v)) {
       manual_fan_mode = v;
-      if (manual_fan_mode) setFan(true);
+      if (manual_fan_mode)
+        setFan(true);
     }
   }
 
@@ -495,7 +569,8 @@ static void pollCommands() {
     bool v = false;
     if (getBoolAt(p, v)) {
       manual_heater_mode = v;
-      if (manual_heater_mode) setHeater(true);
+      if (manual_heater_mode)
+        setHeater(true);
     }
   }
 
@@ -513,14 +588,16 @@ static void pollCommands() {
   {
     String p = joinPath(cfgBase, "/auto_heat_enabled");
     bool v = false;
-    if (getBoolAt(p, v)) auto_heat_enabled = v;
+    if (getBoolAt(p, v))
+      auto_heat_enabled = v;
   }
 
   // target temp
   {
     String p = joinPath(cfgBase, "/target_temp_c");
     float t = target_temp_c;
-    if (getFloatAt(p, t)) target_temp_c = t;
+    if (getFloatAt(p, t))
+      target_temp_c = t;
   }
 
   // calibration factor
@@ -543,15 +620,30 @@ static void printSensorLine() {
   Serial.print("[SENS] W=");
   Serial.print(filteredWeight_g, 2);
   Serial.print("g  T=");
-  if (isnan(temp_c)) Serial.print("NaN"); else Serial.print(temp_c, 2);
+  if (isnan(temp_c))
+    Serial.print("NaN");
+  else
+    Serial.print(temp_c, 2);
   Serial.print("C  H=");
-  if (isnan(hum_pct)) Serial.print("NaN"); else Serial.print(hum_pct, 1);
+  if (isnan(hum_pct))
+    Serial.print("NaN");
+  else
+    Serial.print(hum_pct, 1);
   Serial.print("%  P=");
-  if (isnan(pres_hpa)) Serial.print("NaN"); else Serial.print(pres_hpa, 1);
+  if (isnan(pres_hpa))
+    Serial.print("NaN");
+  else
+    Serial.print(pres_hpa, 1);
   Serial.print("hPa  LUX=");
-  if (isnan(lux)) Serial.print("NaN"); else Serial.print(lux, 1);
+  if (isnan(lux))
+    Serial.print("NaN");
+  else
+    Serial.print(lux, 1);
   Serial.print("  BAT=");
-  if (isnan(battery_v)) Serial.print("NaN"); else Serial.print(battery_v, 2);
+  if (isnan(battery_v))
+    Serial.print("NaN");
+  else
+    Serial.print(battery_v, 2);
   Serial.print("V  FAN=");
   Serial.print(fan_on ? "ON" : "OFF");
   Serial.print("  HEAT=");
@@ -573,7 +665,7 @@ void setup() {
     pinMode(PIN_BAT_ADC, INPUT);
   }
 
-  Serial.println("=== HelaDry Firmware Boot ===");
+  Serial.println("=== HelaDry Firmware v" FW_VERSION " Boot ===");
 
   sensorsInit();
   scaleInit();
