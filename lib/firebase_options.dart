@@ -88,4 +88,5 @@ class DefaultFirebaseOptions {
     databaseURL: 'https://solar-dryer-iot-default-rtdb.asia-southeast1.firebasedatabase.app',
     storageBucket: 'solar-dryer-iot.firebasestorage.app',
   );
+
 }
