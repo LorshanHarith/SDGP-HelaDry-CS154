@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/session_store.dart';
+import '../../../services/device_transport.dart';
 import '../../../app/routes.dart';
 import '../../../app/mock_data.dart';
 import '../../../widgets/app_card.dart';
@@ -12,16 +13,21 @@ class DashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final session = context.watch<SessionStore>();
-    final metrics = MockData.liveMetrics;
     final subtextColor = isDark
         ? const Color(0xFF8892B0)
         : const Color(0xFF64748B);
 
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+      body: StreamBuilder<DeviceState>(
+        stream: DeviceTransport().stateStream,
+        initialData: DeviceTransport().lastState,
+        builder: (context, snapshot) {
+          final metrics = snapshot.data ?? const DeviceState();
+          
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
             // Green gradient header
             Container(
               width: double.infinity,
@@ -172,7 +178,7 @@ class DashboardPage extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        session.connectionMode == 'online'
+                        metrics.isOnline || session.connectionMode == 'online'
                             ? 'Online'
                             : 'Offline',
                         style: const TextStyle(
@@ -207,18 +213,18 @@ class DashboardPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Icon(
-                      Icons.wb_sunny_outlined,
+                      metrics.sessionState == 'RUNNING' ? Icons.wb_sunny : Icons.wb_sunny_outlined,
                       size: 48,
-                      color: subtextColor.withValues(alpha: 0.5),
+                      color: metrics.sessionState == 'RUNNING' ? const Color(0xFFFFA726) : subtextColor.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'No active drying batch',
+                      metrics.sessionState == 'RUNNING' ? 'Active: ${metrics.cropName}' : 'No active drying batch',
                       style: TextStyle(fontSize: 16, color: subtextColor),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Start a new batch to begin tracking',
+                      metrics.sessionState == 'RUNNING' ? 'Progress: ${metrics.progressPct.toStringAsFixed(1)}%' : 'Start a new batch to begin tracking',
                       style: TextStyle(
                         fontSize: 13,
                         color: subtextColor.withValues(alpha: 0.7),
@@ -286,7 +292,7 @@ class DashboardPage extends StatelessWidget {
                           context,
                           Icons.thermostat,
                           'Temperature',
-                          '${(metrics['temperature'] as double).toStringAsFixed(0)}°C',
+                          '${metrics.tempC.toStringAsFixed(1)}°C',
                           const Color(0xFFEF5350),
                           isDark,
                         ),
@@ -297,7 +303,7 @@ class DashboardPage extends StatelessWidget {
                           context,
                           Icons.water_drop,
                           'Humidity',
-                          '${(metrics['humidity'] as double).toStringAsFixed(0)}%',
+                          '${metrics.humPct.toStringAsFixed(0)}%',
                           const Color(0xFF42A5F5),
                           isDark,
                         ),
@@ -312,7 +318,7 @@ class DashboardPage extends StatelessWidget {
                           context,
                           Icons.toys,
                           'Fan Speed',
-                          '${metrics['fanSpeed']}%',
+                          '${metrics.fanSpeedPct}%',
                           const Color(0xFF66BB6A),
                           isDark,
                         ),
@@ -323,7 +329,7 @@ class DashboardPage extends StatelessWidget {
                           context,
                           Icons.local_fire_department,
                           'Heater',
-                          '${metrics['heaterStatus']}',
+                          metrics.heaterOn ? 'ON' : 'OFF',
                           const Color(0xFFFFA726),
                           isDark,
                         ),
@@ -338,7 +344,7 @@ class DashboardPage extends StatelessWidget {
                           context,
                           Icons.battery_charging_full,
                           'Battery',
-                          '${metrics['battery']}V',
+                          '${metrics.batteryV.toStringAsFixed(1)}V',
                           const Color(0xFF4CAF50),
                           isDark,
                         ),
@@ -349,7 +355,7 @@ class DashboardPage extends StatelessWidget {
                           context,
                           Icons.wb_sunny,
                           'Solar',
-                          '${metrics['solarStatus']}',
+                          'Charging', // Mock for now, fw doesn't send this explicitly
                           const Color(0xFFFFD54F),
                           isDark,
                         ),
@@ -451,7 +457,8 @@ class DashboardPage extends StatelessWidget {
             const SizedBox(height: 24),
           ],
         ),
-      ),
+      );
+     }),
     );
   }
 
