@@ -54,9 +54,9 @@ class _CropGuidePageState extends State<CropGuidePage> {
                   onPressed: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 4),
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
+                  children: [
                     Text(
                       'Crop Drying Guide',
                       style: TextStyle(
@@ -101,17 +101,17 @@ class _CropGuidePageState extends State<CropGuidePage> {
                           height: 72,
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? accentColor.withValues(alpha: 0.15)
+                                ? accentColor.withOpacity(0.15)
                                 : (isDark
-                                      ? const Color(0xFF112240)
-                                      : const Color(0xFFF5F7FA)),
+                                    ? const Color(0xFF112240)
+                                    : const Color(0xFFF5F7FA)),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: isSelected
                                   ? accentColor
                                   : (isDark
-                                        ? const Color(0xFF1E3A5F)
-                                        : const Color(0xFFE0E6ED)),
+                                      ? const Color(0xFF1E3A5F)
+                                      : const Color(0xFFE0E6ED)),
                               width: isSelected ? 2 : 1,
                             ),
                           ),
@@ -198,8 +198,9 @@ class _CropGuidePageState extends State<CropGuidePage> {
                                         color: subtextColor,
                                       ),
                                       const SizedBox(width: 4),
+                                      // FIXED: Updated to use durationHours and converted to String
                                       Text(
-                                        selectedCrop.duration,
+                                        '${selectedCrop.durationHours} hours',
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: subtextColor,
@@ -405,7 +406,7 @@ class _CropGuidePageState extends State<CropGuidePage> {
             height: 32,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: accentColor.withValues(alpha: 0.15),
+              color: accentColor.withOpacity(0.15),
             ),
             child: Center(
               child: Text(
