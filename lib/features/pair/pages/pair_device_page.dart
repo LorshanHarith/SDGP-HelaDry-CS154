@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/session_store.dart';
 import '../../../services/mock_device_service.dart';
+import '../../../services/device_setup_service.dart'; // Import the new registration service
 import '../../../app/routes.dart';
 import '../../../app/mock_data.dart';
 import '../../../widgets/app_card.dart';
@@ -32,13 +33,37 @@ class _PairDevicePageState extends State<PairDevicePage> {
     });
   }
 
+  /// This is the key logic that bridges Bluetooth discovery and Flask registration
   void _connectToDevice(MockDevice device) async {
     setState(() => _isConnecting = true);
-    await MockDeviceService.connectToDevice(device.name);
-    if (!mounted) return;
-    final session = context.read<SessionStore>();
-    session.setPairedDevice(device.name, 'HelaDry');
-    Navigator.of(context).pushReplacementNamed(AppRoutes.pairSuccess);
+
+    try {
+      // 1. Simulate/Perform the Bluetooth handshake
+      await MockDeviceService.connectToDevice(device.name);
+      
+      if (!mounted) return;
+
+      // 2. REGISTER with Backend: This links the Device ID to your Firebase UID
+      // This is what prevents the "Device not found" error on the Start Batch page
+      await DeviceSetupService.registerDeviceWithBackend(device.name);
+
+      // 3. Update local session store so the app knows which device is currently active
+      final session = context.read<SessionStore>();
+      session.setPairedDevice(device.name, 'HelaDry');
+
+      // 4. Navigate to success page
+      Navigator.of(context).pushReplacementNamed(AppRoutes.pairSuccess);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Registration failed: ${e.toString()}'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isConnecting = false);
+    }
   }
 
   @override
@@ -58,9 +83,9 @@ class _PairDevicePageState extends State<PairDevicePage> {
           child: Column(
             children: [
               // Top-right theme toggle
-              Align(
+              const Align(
                 alignment: Alignment.topRight,
-                child: const ModeToggleButton(),
+                child: ModeToggleButton(),
               ),
               const SizedBox(height: 24),
 
@@ -70,10 +95,12 @@ class _PairDevicePageState extends State<PairDevicePage> {
                 height: 80,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF00838F), Color(0xFF006064)],
+                    colors: isDark 
+                        ? [const Color(0xFF00D4AA), const Color(0xFF00838F)]
+                        : [const Color(0xFF00838F), const Color(0xFF006064)],
                   ),
                 ),
                 child: const Icon(
@@ -87,8 +114,8 @@ class _PairDevicePageState extends State<PairDevicePage> {
               Text(
                 'Pair Your Device',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -120,7 +147,7 @@ class _PairDevicePageState extends State<PairDevicePage> {
                       Icon(
                         Icons.bluetooth,
                         size: 40,
-                        color: subtextColor.withValues(alpha: 0.5),
+                        color: subtextColor.withOpacity(0.5),
                       ),
                       const SizedBox(height: 12),
                       Text(
@@ -136,7 +163,7 @@ class _PairDevicePageState extends State<PairDevicePage> {
                         'Make sure your device is powered on and nearby',
                         style: TextStyle(
                           fontSize: 13,
-                          color: subtextColor.withValues(alpha: 0.7),
+                          color: subtextColor.withOpacity(0.7),
                         ),
                         textAlign: TextAlign.center,
                       ),
