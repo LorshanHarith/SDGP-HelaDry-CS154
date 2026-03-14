@@ -77,6 +77,7 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
 
       if (response.statusCode == 200) {
         setState(() => _isDrying = false);
+        session.setActiveBatch(null); // Clear active batch so dashboard updates
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Emergency Stop Sent!'), 
@@ -112,9 +113,12 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
       "device_id": registeredDeviceId,
       "temperature": _targetTemp, 
       "crop_name": selectedCrop.name,
+      "crop_emoji": selectedCrop.emoji,
       "weight_kg": double.tryParse(_weightController.text) ?? 0.0,
       "trays": int.tryParse(_traysController.text) ?? 1,
       "duration": int.tryParse(_durationController.text) ?? selectedCrop.durationHours,
+      "start_date": DateTime.now().toIso8601String(),
+      "status": "active",
     };
 
     showDialog(
@@ -147,6 +151,9 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() => _isDrying = true);
+        // Set active batch in SessionStore using backend response if available
+        final backendBatch = responseData['batch'] ?? batchData;
+        session.setActiveBatch(backendBatch);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Success: ${responseData['message']}')),
         );

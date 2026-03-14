@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../../../services/session_store.dart';
 import '../../../app/routes.dart';
 import '../../../app/mock_data.dart';
 import '../../../widgets/app_card.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -116,7 +120,7 @@ class DashboardPage extends StatelessWidget {
                       vertical: 10,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
@@ -193,66 +197,72 @@ class DashboardPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: AppCard(
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Text(
-                      'Active Drying Batch',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark
-                            ? const Color(0xFFE6F1FF)
-                            : const Color(0xFF1A2D4D),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Icon(
-                      Icons.wb_sunny_outlined,
-                      size: 48,
-                      color: subtextColor.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No active drying batch',
-                      style: TextStyle(fontSize: 16, color: subtextColor),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Start a new batch to begin tracking',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: subtextColor.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(
-                            context,
-                          ).pushNamed(AppRoutes.startNewBatch);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark
-                              ? const Color(0xFF1A2D4D)
-                              : const Color(0xFF1976D2),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
+                child: session.activeBatch == null
+                    ? Column(
+                        children: [
+                          Text(
+                            'Active Drying Batch',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? const Color(0xFFE6F1FF)
+                                  : const Color(0xFF1A2D4D),
+                            ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                          const SizedBox(height: 16),
+                          Icon(
+                            Icons.wb_sunny_outlined,
+                            size: 48,
+                            color: subtextColor.withOpacity(0.5),
                           ),
-                        ),
-                        child: const Text(
-                          'Start New Batch',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No active drying batch',
+                            style: TextStyle(fontSize: 16, color: subtextColor),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Start a new batch to begin tracking',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: subtextColor.withOpacity(0.7),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SizedBox(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                Navigator.of(
+                                  context,
+                                ).pushNamed(AppRoutes.startNewBatch);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDark
+                                    ? const Color(0xFF1A2D4D)
+                                    : const Color(0xFF1976D2),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text(
+                                'Start New Batch',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : _ActiveBatchTimerCard(
+                        batch: session.activeBatch!,
+                        isDark: isDark,
+                        subtextColor: subtextColor,
                       ),
-                    ),
-                  ],
-                ),
               ),
             ),
 
@@ -511,11 +521,9 @@ class DashboardPage extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark
-              ? color.withValues(alpha: 0.15)
-              : color.withValues(alpha: 0.1),
+          color: color.withOpacity(isDark ? 0.15 : 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Column(
           children: [
@@ -523,7 +531,7 @@ class DashboardPage extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: color.withValues(alpha: isDark ? 0.3 : 0.15),
+                color: color.withOpacity(isDark ? 0.3 : 0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 22),
@@ -554,5 +562,232 @@ class DashboardPage extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// --- Timer widget for active batch ---
+
+class _ActiveBatchTimerCard extends StatefulWidget {
+  final Map<String, dynamic> batch;
+  final bool isDark;
+  final Color subtextColor;
+  const _ActiveBatchTimerCard({required this.batch, required this.isDark, required this.subtextColor});
+
+  @override
+  State<_ActiveBatchTimerCard> createState() => _ActiveBatchTimerCardState();
+}
+
+class _ActiveBatchTimerCardState extends State<_ActiveBatchTimerCard> {
+  late Duration _remaining;
+  late DateTime _endTime;
+  late int _durationHours;
+  late DateTime _startTime;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _durationHours = (widget.batch["duration"] is int)
+        ? widget.batch["duration"] as int
+        : int.tryParse(widget.batch["duration"].toString()) ?? 0;
+    _startTime = DateTime.tryParse(widget.batch["start_date"] ?? "") ?? DateTime.now();
+    _endTime = _startTime.add(Duration(hours: _durationHours));
+    _remaining = _endTime.difference(DateTime.now());
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
+  }
+
+  void _onTick() {
+    final now = DateTime.now();
+    setState(() {
+      _remaining = _endTime.difference(now);
+      if (_remaining.isNegative) _remaining = Duration.zero;
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes % 60;
+    final s = d.inSeconds % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}' ;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final batch = widget.batch;
+    final isDark = widget.isDark;
+    final subtextColor = widget.subtextColor;
+    return Column(
+      children: [
+        Text(
+          'Active Drying Batch',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDark ? const Color(0xFFE6F1FF) : const Color(0xFF1A2D4D),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          '${batch["crop_emoji"] ?? ""}  ${batch["crop_name"] ?? ""}',
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: isDark ? const Color(0xFFE6F1FF) : const Color(0xFF1A2D4D),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.scale, size: 18, color: subtextColor),
+            const SizedBox(width: 4),
+            Text(
+              '${batch["weight_kg"] ?? "-"} kg',
+              style: TextStyle(fontSize: 15, color: subtextColor),
+            ),
+            const SizedBox(width: 16),
+            Icon(Icons.layers, size: 18, color: subtextColor),
+            const SizedBox(width: 4),
+            Text(
+              '${batch["trays"] ?? "-"} trays',
+              style: TextStyle(fontSize: 15, color: subtextColor),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.thermostat, size: 18, color: subtextColor),
+            const SizedBox(width: 4),
+            Text(
+              '${batch["temperature"] ?? "-"}°C',
+              style: TextStyle(fontSize: 15, color: subtextColor),
+            ),
+            const SizedBox(width: 16),
+            Icon(Icons.timer, size: 18, color: subtextColor),
+            const SizedBox(width: 4),
+            Text(
+              '${batch["duration"] ?? "-"} h',
+              style: TextStyle(fontSize: 15, color: subtextColor),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Started: ' + (batch["start_date"] != null ? (batch["start_date"] as String).split('T')[0] : '-'),
+          style: TextStyle(fontSize: 13, color: subtextColor.withOpacity(0.8)),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.hourglass_bottom, color: Colors.amber, size: 22),
+            const SizedBox(width: 6),
+            Text(
+              _remaining > Duration.zero ? 'Time Left: ${_formatDuration(_remaining)}' : 'Batch Complete!',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: _remaining > Duration.zero ? Colors.amber : Colors.green,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isDark ? const Color(0xFF1A2D4D) : const Color(0xFF1976D2),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  _remaining > Duration.zero ? 'Batch Running' : 'Batch Complete',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _remaining > Duration.zero ? _handleStopBatch : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Stop',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleStopBatch() async {
+    final session = Provider.of<SessionStore>(context, listen: false);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await user?.getIdToken();
+      final deviceId = widget.batch["device_id"];
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:5000/device/stop'),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({"device_id": deviceId}),
+      );
+      if (!mounted) return;
+      Navigator.pop(context); // Close loader
+      if (response.statusCode == 200) {
+        session.setActiveBatch(null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Drying Stopped'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else {
+        throw Exception("Failed to stop device");
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (Navigator.canPop(context)) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Stop Error: ${e.toString()}')),
+      );
+    }
   }
 }

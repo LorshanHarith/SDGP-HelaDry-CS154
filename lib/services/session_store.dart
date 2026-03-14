@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
+// Active Drying Batch
 class SessionStore extends ChangeNotifier {
+  Map<String, dynamic>? _activeBatch;
+
+  Map<String, dynamic>? get activeBatch => _activeBatch;
+  void setActiveBatch(Map<String, dynamic>? batch) {
+    _activeBatch = batch;
+    notifyListeners();
+  }
   bool _isLoggedIn = false;
   String _connectionMode = ''; // 'online' or 'offline'
   String _pairedDeviceId = '';
