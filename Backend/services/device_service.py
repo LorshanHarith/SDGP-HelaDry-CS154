@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from .session_service import create_session, end_session
 
 
-def start_device(user_id, device_id, temperature):
+def start_device(user_id, device_id, temperature, batch_details=None):
     try:
         device_ref = db.reference(f"devices/{device_id}")
         device = device_ref.get()
@@ -42,7 +42,7 @@ def start_device(user_id, device_id, temperature):
         })
 
         # Create session
-        session_result = create_session(user_id, device_id, temperature)
+        session_result = create_session(user_id, device_id, temperature, batch_details=batch_details)
 
         if "error" in session_result:
             return session_result

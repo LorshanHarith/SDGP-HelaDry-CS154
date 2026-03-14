@@ -9,8 +9,52 @@ import '../../../app/mock_data.dart';
 import '../../../widgets/app_card.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  bool _checkedActive = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Only check once per widget lifecycle
+    if (!_checkedActive) {
+      _checkedActive = true;
+      _checkAndSetActiveBatch();
+    }
+  }
+
+  Future<void> _checkAndSetActiveBatch() async {
+    final session = context.read<SessionStore>();
+    if (session.activeBatch != null) return;
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await user?.getIdToken();
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:5000/session/my-sessions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List sessions = data['data'] ?? [];
+        final active = sessions.firstWhere(
+          (s) => (s['status'] ?? '') == 'active',
+          orElse: () => null,
+        );
+        if (active != null) {
+          session.setActiveBatch(Map<String, dynamic>.from(active));
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -577,29 +621,36 @@ class _ActiveBatchTimerCard extends StatefulWidget {
   State<_ActiveBatchTimerCard> createState() => _ActiveBatchTimerCardState();
 }
 
+
 class _ActiveBatchTimerCardState extends State<_ActiveBatchTimerCard> {
-  late Duration _remaining;
-  late DateTime _endTime;
   late int _durationHours;
   late DateTime _startTime;
+  late DateTime _endTime;
+  Duration _remaining = Duration.zero;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _durationHours = (widget.batch["duration"] is int)
-        ? widget.batch["duration"] as int
-        : int.tryParse(widget.batch["duration"].toString()) ?? 0;
-    _startTime = DateTime.tryParse(widget.batch["start_date"] ?? "") ?? DateTime.now();
-    _endTime = _startTime.add(Duration(hours: _durationHours));
-    _remaining = _endTime.difference(DateTime.now());
+    _initTimer();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _onTick());
   }
 
+  void _initTimer() {
+    _durationHours = (widget.batch["duration"] is int)
+        ? widget.batch["duration"] as int
+        : int.tryParse(widget.batch["duration"].toString()) ?? 0;
+    // Use start_date or start_time, fallback to now if missing
+    final rawStart = widget.batch["start_date"] ?? widget.batch["start_time"] ?? "";
+    _startTime = DateTime.tryParse(rawStart) ?? DateTime.now();
+    _endTime = _startTime.add(Duration(hours: _durationHours));
+    _remaining = _endTime.difference(DateTime.now());
+    if (_remaining.isNegative) _remaining = Duration.zero;
+  }
+
   void _onTick() {
-    final now = DateTime.now();
     setState(() {
-      _remaining = _endTime.difference(now);
+      _remaining = _endTime.difference(DateTime.now());
       if (_remaining.isNegative) _remaining = Duration.zero;
     });
   }

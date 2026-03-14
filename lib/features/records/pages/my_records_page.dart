@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../app/mock_data.dart';
+
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MyRecordsPage extends StatefulWidget {
   const MyRecordsPage({super.key});
@@ -12,6 +15,15 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
   String _filter = 'All';
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _records = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRecords();
+  }
 
   @override
   void dispose() {
@@ -19,18 +31,53 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
     super.dispose();
   }
 
-  List<MockBatchRecord> get _filteredRecords {
-    var records = MockData.batchRecords.toList();
+  Future<void> _fetchRecords() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await user?.getIdToken();
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:5000/session/my-sessions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final List sessions = data['data'] ?? [];
+        _records = List<Map<String, dynamic>>.from(sessions);
+        setState(() {
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _loading = false;
+          _error = 'Failed to fetch records ({response.statusCode})';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error = 'Error: $e';
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredRecords {
+    var records = _records.toList();
     if (_filter == 'Active') {
-      records = records.where((r) => r.status == 'active').toList();
+      records = records.where((r) => (r['status'] ?? '') == 'active').toList();
     } else if (_filter == 'Completed') {
-      records = records.where((r) => r.status == 'completed').toList();
+      records = records.where((r) => (r['status'] ?? '') == 'completed').toList();
     }
     if (_searchQuery.isNotEmpty) {
       records = records
           .where(
-            (r) =>
-                r.cropName.toLowerCase().contains(_searchQuery.toLowerCase()),
+            (r) => (r['crop_name'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()),
           )
           .toList();
     }
@@ -40,23 +87,29 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final records = _filteredRecords;
 
-    // Stats
-    final totalBatches = MockData.batchRecords.length;
-    final activeBatches = MockData.batchRecords
-        .where((r) => r.status == 'active')
-        .length;
-    final completedBatches = MockData.batchRecords
-        .where((r) => r.status == 'completed')
-        .length;
-    final totalDried = MockData.batchRecords.fold<double>(
-      0,
-      (sum, r) => sum + r.weightKg,
-    );
+    final records = _filteredRecords;
+    final totalBatches = _records.length;
+    final activeBatches = _records.where((r) => (r['status'] ?? '') == 'active').length;
+    final completedBatches = _records.where((r) => (r['status'] ?? '') == 'completed').length;
+    final totalDried = _records.fold<double>(0, (sum, r) => sum + ((r['weight_kg'] ?? 0) is num ? (r['weight_kg'] ?? 0).toDouble() : 0.0));
 
     return Scaffold(
-      body: Column(
+      appBar: AppBar(
+        title: const Text('My Records'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _fetchRecords,
+            tooltip: 'Refresh',
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Text(_error!, style: const TextStyle(color: Colors.red)))
+              : Column(
         children: [
           // Purple gradient header
           Container(
@@ -223,7 +276,7 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
+          color: Colors.white.withOpacity(0.15),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -248,8 +301,30 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
     );
   }
 
-  Widget _buildRecordItem(MockBatchRecord record, bool isDark) {
-    final isActive = record.status == 'active';
+  Widget _buildRecordItem(Map<String, dynamic> record, bool isDark) {
+    final isActive = (record['status'] ?? '') == 'active';
+
+    // Helper to format date/time
+    String formatDateTime(String? raw) {
+      if (raw == null || raw.isEmpty) return '';
+      DateTime? parsed;
+      try {
+        parsed = DateTime.tryParse(raw);
+      } catch (_) {
+        parsed = null;
+      }
+      if (parsed != null) {
+        return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year} at '
+            '${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}';
+      }
+      return raw;
+    }
+
+    final rawStart = record['start_date'] ?? record['start_time'] ?? '';
+    final rawEnd = record['end_date'] ?? record['end_time'] ?? '';
+    final startDisplay = formatDateTime(rawStart);
+    final endDisplay = formatDateTime(rawEnd);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -262,21 +337,21 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
       ),
       child: Row(
         children: [
-          Text(record.cropEmoji, style: const TextStyle(fontSize: 32)),
+          Text((record['crop_emoji'] ?? '🌾').toString(), style: const TextStyle(fontSize: 32)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  record.cropName,
+                  (record['crop_name'] ?? 'Unknown').toString(),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                   ),
                 ),
                 Text(
-                  '${record.weightKg}kg  •  ${record.trays} trays  •  ${record.targetTemp}°C',
+                  '${record['weight_kg'] ?? 0}kg  •  ${record['trays'] ?? 0} trays  •  ${record['target_temp'] ?? 0}°C',
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark
@@ -284,15 +359,26 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
                         : const Color(0xFF64748B),
                   ),
                 ),
-                Text(
-                  'Started: ${record.startDate}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark
-                        ? const Color(0xFF8892B0)
-                        : const Color(0xFF64748B),
+                if (startDisplay.isNotEmpty)
+                  Text(
+                    'Started: $startDisplay',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? const Color(0xFF8892B0)
+                          : const Color(0xFF64748B),
+                    ),
                   ),
-                ),
+                if (!isActive && endDisplay.isNotEmpty)
+                  Text(
+                    'Ended: $endDisplay',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? const Color(0xFFB088F9)
+                          : const Color(0xFF6B21A8),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -300,8 +386,8 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: isActive
-                  ? const Color(0xFF4CAF50).withValues(alpha: 0.15)
-                  : const Color(0xFF42A5F5).withValues(alpha: 0.15),
+                  ? const Color(0xFF4CAF50).withOpacity(0.15)
+                  : const Color(0xFF42A5F5).withOpacity(0.15),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

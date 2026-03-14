@@ -53,7 +53,8 @@ def start():
         if not valid:
             return jsonify(error(message)), 400
 
-        result = start_device(g.user_id, device_id, temperature)
+        # Pass all batch details to start_device
+        result = start_device(g.user_id, device_id, temperature, batch_details=data)
 
         if "error" in result:
             return jsonify(error(result["error"])), 403
