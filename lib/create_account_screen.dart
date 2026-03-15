@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'create_account_screen.dart';
 
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+class CreateAccountScreen extends StatefulWidget {
+  const CreateAccountScreen({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<CreateAccountScreen> createState() => _CreateAccountScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _CreateAccountScreenState extends State<CreateAccountScreen> {
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -19,18 +19,13 @@ class _SignInScreenState extends State<SignInScreen> {
     });
   }
 
-  void _signIn() {
-    // TODO: Add authentication logic
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sign in pressed')));
-  }
-
   void _createAccount() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (context) => const CreateAccountScreen()));
+    // TODO: Add create account logic (Firebase Auth / backend)
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Create account pressed')));
   }
 
-  void _forgotPassword() {
-    // TODO: Add password recovery
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Forgot password pressed')));
+  void _goToSignIn() {
+    Navigator.of(context).pop();
   }
 
   @override
@@ -45,7 +40,7 @@ class _SignInScreenState extends State<SignInScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const SizedBox(height: 16),
-                const Text('Sign in', style: TextStyle(color: Colors.white70, fontSize: 18)),
+                const Text('Sign up', style: TextStyle(color: Colors.white70, fontSize: 18)),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
@@ -75,15 +70,20 @@ class _SignInScreenState extends State<SignInScreen> {
                       const Text('Smart Solar Drying for Farmers', style: TextStyle(color: Colors.black54)),
                       const SizedBox(height: 24),
 
-                      // Avatar placeholder
-                      const CircleAvatar(
-                        radius: 38,
-                        backgroundColor: Color(0xFFF1F3F4),
-                        child: Icon(Icons.person, size: 44, color: Colors.black26),
+                      // Full name field
+                      TextField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Full Name',
+                          hintText: 'Enter your name',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          filled: true,
+                          fillColor: const Color(0xFFF7F7F7),
+                        ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
-                      // Email / Phone field
+                      // Email/Phone field
                       TextField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
@@ -113,34 +113,25 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: _forgotPassword,
-                          child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF13B546))),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 24),
 
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton(
-                          onPressed: _signIn,
+                          onPressed: _createAccount,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF13B546),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
-                          child: const Text('Log In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          child: const Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(height: 12),
 
                       TextButton(
-                        onPressed: _createAccount,
-                        child: const Text('New User? Create Account', style: TextStyle(color: Color(0xFF13B546))),
+                        onPressed: _goToSignIn,
+                        child: const Text('Already have an account? Log In', style: TextStyle(color: Color(0xFF13B546))),
                       ),
                     ],
                   ),
