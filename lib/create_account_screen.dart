@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dashboard_screen.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -8,135 +9,295 @@ class CreateAccountScreen extends StatefulWidget {
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
-  void _togglePassword() {
-    setState(() {
-      _obscurePassword = !_obscurePassword;
-    });
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
-  void _createAccount() {
-    // TODO: Add create account logic (Firebase Auth / backend)
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Create account pressed')));
-  }
-
-  void _goToSignIn() {
-    Navigator.of(context).pop();
+  void _handleCreateAccount() {
+    if (_formKey.currentState!.validate()) {
+      // Navigate to dashboard
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color(0xFFF5F5DC),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 16),
-                const Text('Sign up', style: TextStyle(color: Colors.white70, fontSize: 18)),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.14), blurRadius: 20, offset: const Offset(0, 8)),
-                    ],
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Sun Icon
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.orange.withOpacity(0.3),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.wb_sunny,
+                      color: Colors.white,
+                      size: 40,
+                    ),
                   ),
-                  child: Column(
+                  const SizedBox(height: 24),
+                  
+                  // Title
+                  const Text(
+                    'Dehydrator Assistant',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF13B546),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Subtitle
+                  const Text(
+                    'Smart Solar Drying for Farmers',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  
+                  // User Avatar
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.person_outline,
+                      size: 50,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  
+                  // Full Name Label
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Full Name',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Name Input
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter your name',
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Phone Number or Email Label
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Phone Number or Email',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Email/Phone Input
+                  TextFormField(
+                    controller: _emailController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter phone or email',
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter your phone or email';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Password Label
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Password',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Password Input
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    decoration: InputDecoration(
+                      hintText: 'Enter password',
+                      filled: true,
+                      fillColor: Colors.grey[200],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: Colors.grey[600],
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a password';
+                      }
+                      if (value.length < 6) {
+                        return 'Password must be at least 6 characters';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 40),
+                  
+                  // Create Account Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _handleCreateAccount,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF13B546),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Log In Link
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE9F3EA),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Center(
-                          child: Icon(Icons.wb_sunny, color: Color(0xFF13B546), size: 36),
+                      Text(
+                        'Already have an account? ',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 14,
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      const Text('Dehydrator Assistant', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 6),
-                      const Text('Smart Solar Drying for Farmers', style: TextStyle(color: Colors.black54)),
-                      const SizedBox(height: 24),
-
-                      // Full name field
-                      TextField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          labelText: 'Full Name',
-                          hintText: 'Enter your name',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: const Color(0xFFF7F7F7),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Email/Phone field
-                      TextField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: 'Phone Number or Email',
-                          hintText: 'Enter phone or email',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: const Color(0xFFF7F7F7),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Password field
-                      TextField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          labelText: 'Password',
-                          hintText: 'Enter password',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: const Color(0xFFF7F7F7),
-                          suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                            onPressed: _togglePassword,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: ElevatedButton(
-                          onPressed: _createAccount,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF13B546),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
                       TextButton(
-                        onPressed: _goToSignIn,
-                        child: const Text('Already have an account? Log In', style: TextStyle(color: Color(0xFF13B546))),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size(0, 0),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Log In',
+                          style: TextStyle(
+                            color: Color(0xFF13B546),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
