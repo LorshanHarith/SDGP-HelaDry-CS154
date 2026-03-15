@@ -10,30 +10,47 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  static const Duration _splashDuration = Duration(seconds: 3);
+  static const Color _backgroundColor = Color(0xFFF7FFF9);
+  static const Color _iconColor = Color(0xFFFFC107);
+  static const String _appTitle = 'Smart Solar Drying for Farmers';
+
+  Timer? _timer;
+
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 3), () {
+    _timer = Timer(_splashDuration, _navigateToSignIn);
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _navigateToSignIn() {
+    if (mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (context) => const SignInScreen()),
       );
-    });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Color(0xFFF7FFF9),
-      body: Center(
+    return Scaffold(
+      backgroundColor: _backgroundColor,
+      body: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Smart Solar Drying for Farmers',
+              _appTitle,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
             ),
             SizedBox(height: 20),
-            Icon(Icons.wb_sunny_rounded, size: 120, color: Color(0xFFFFC107)),
+            Icon(Icons.wb_sunny_rounded, size: 120, color: _iconColor),
           ],
         ),
       ),
