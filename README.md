@@ -55,7 +55,7 @@ HelaDry is a smart solar dehydrator system that helps tea farmers optimize their
 ### Mobile App Setup
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/SDGP-HelaDry-CS154.git
+   git clone https://github.com/asjath-admin/SDGP-HelaDry-CS154.git
    cd SDGP-HelaDry-CS154
    ```
 
@@ -146,8 +146,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 👥 Team
 
 - **Project**: SDGP-CS154
-- **Institution**: University/College Name
-- **Developers**: [Team Member Names]
+- **Institution**: IIT
+- **Developers**: Frontend - Asjath and Kabi
 
 ## 📞 Support
 
