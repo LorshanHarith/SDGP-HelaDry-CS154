@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
+// Active Drying Batch
 class SessionStore extends ChangeNotifier {
+  Map<String, dynamic>? _activeBatch;
+
+  Map<String, dynamic>? get activeBatch => _activeBatch;
+  void setActiveBatch(Map<String, dynamic>? batch) {
+    _activeBatch = batch;
+    notifyListeners();
+  }
   bool _isLoggedIn = false;
   String _connectionMode = ''; // 'online' or 'offline'
   String _pairedDeviceId = '';
@@ -26,9 +34,13 @@ class SessionStore extends ChangeNotifier {
   bool _lowBatteryAlert = true;
   bool _sensorFaultAlert = true;
 
-  // Getters
+  // --- GETTERS ---
   bool get isLoggedIn => _isLoggedIn;
   String get connectionMode => _connectionMode;
+  
+  // StartNewBatchPage looks for 'deviceId'. We map it to _pairedDeviceId.
+  String? get deviceId => _pairedDeviceId.isEmpty ? null : _pairedDeviceId;
+  
   String get pairedDeviceId => _pairedDeviceId;
   String get pairedDeviceName => _pairedDeviceName;
   String get selectedWifiSsid => _selectedWifiSsid;
@@ -45,6 +57,8 @@ class SessionStore extends ChangeNotifier {
   bool get overTempAlert => _overTempAlert;
   bool get lowBatteryAlert => _lowBatteryAlert;
   bool get sensorFaultAlert => _sensorFaultAlert;
+
+  // --- ACTIONS ---
 
   // Auth
   void login({String name = '', String email = ''}) {
@@ -79,6 +93,7 @@ class SessionStore extends ChangeNotifier {
   void setPairedDevice(String id, String name) {
     _pairedDeviceId = id;
     _pairedDeviceName = name;
+    print("SessionStore: Linked Device ID - $_pairedDeviceId");
     notifyListeners();
   }
 
