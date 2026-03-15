@@ -151,3 +151,77 @@ def register_device(user_id, device_id, device_name=None):
 
     except Exception:
         return {"error": "Failed to register device"}
+
+
+def update_device_temperature(user_id, device_id, temperature):
+    try:
+        device_ref = db.reference(f"devices/{device_id}")
+        device = device_ref.get()
+
+        # Check device exists
+        if not device:
+            return {"error": "Device not found"}
+
+        # Check ownership
+        if device.get("owner") != user_id:
+            return {"error": "Unauthorized access to device"}
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Send temperature update command to device
+        device_ref.update({
+            "command": {
+                "type": "update_temperature",
+                "target_temperature": temperature,
+                "timestamp": timestamp,
+                "source": "cloud"
+            },
+            "updated_at": timestamp
+        })
+
+        return {
+            "message": "Temperature updated successfully",
+            "device_id": device_id,
+            "temperature": temperature,
+            "timestamp": timestamp
+        }
+
+    except Exception:
+        return {"error": "Failed to update temperature"}
+
+
+def update_device_fan_speed(user_id, device_id, fan_speed):
+    try:
+        device_ref = db.reference(f"devices/{device_id}")
+        device = device_ref.get()
+
+        # Check device exists
+        if not device:
+            return {"error": "Device not found"}
+
+        # Check ownership
+        if device.get("owner") != user_id:
+            return {"error": "Unauthorized access to device"}
+
+        timestamp = datetime.now(timezone.utc).isoformat()
+
+        # Send fan speed update command to device
+        device_ref.update({
+            "command": {
+                "type": "update_fan_speed",
+                "fan_speed": fan_speed,
+                "timestamp": timestamp,
+                "source": "cloud"
+            },
+            "updated_at": timestamp
+        })
+
+        return {
+            "message": "Fan speed updated successfully",
+            "device_id": device_id,
+            "fan_speed": fan_speed,
+            "timestamp": timestamp
+        }
+
+    except Exception:
+        return {"error": "Failed to update fan speed"}
