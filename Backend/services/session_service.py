@@ -24,7 +24,7 @@ def create_session(user_id, device_id, target_temperature, batch_details=None):
         # Add extra batch details if provided
         if batch_details:
             for key in [
-                "crop_name", "crop_emoji", "weight_kg", "trays", "duration", "start_date", "status"
+                "crop_name", "crop_emoji", "weight_kg", "trays", "duration", "start_date", "status", "batch_name"
             ]:
                 if key in batch_details:
                     session_data[key] = batch_details[key]
@@ -58,12 +58,17 @@ def end_session(user_id, device_id):
 
                 db.reference(f"sessions/{session_id}").update({
                     "end_time": timestamp,
+                    "end_date": timestamp,
                     "status": "completed"
                 })
 
+                # Fetch and return the updated session
+                updated_session = db.reference(f"sessions/{session_id}").get()
+                
                 return {
                     "session_id": session_id,
-                    "end_time": timestamp
+                    "end_time": timestamp,
+                    "session": updated_session
                 }
 
         return {"error": "Active session not found"}

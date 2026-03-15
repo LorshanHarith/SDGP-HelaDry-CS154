@@ -122,7 +122,7 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
       "duration": int.tryParse(_durationController.text) ?? selectedCrop.durationHours,
       "start_date": DateTime.now().toIso8601String(),
       "status": "active",
-      if (!_isAutoMode && _batchNameController.text.trim().isNotEmpty)
+      if (_batchNameController.text.trim().isNotEmpty)
         "batch_name": _batchNameController.text.trim(),
     };
 
@@ -279,6 +279,8 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
             ),
             const SizedBox(height: 15),
             _buildField('Duration (Hours)', 'Time', _durationController, isDark, cardColor, enabled: !_isAutoMode, keyboard: TextInputType.number),
+            const SizedBox(height: 20),
+            _buildField('Batch Name (Optional)', 'Leave blank to use crop name', _batchNameController, isDark, cardColor),
             const SizedBox(height: 40),
             
             // SIDE-BY-SIDE BUTTONS: Always visible

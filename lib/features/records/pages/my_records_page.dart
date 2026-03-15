@@ -69,18 +69,44 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
 
   List<Map<String, dynamic>> get _filteredRecords {
     var records = _records.toList();
+    
+    // Apply status filter
     if (_filter == 'Active') {
       records = records.where((r) => (r['status'] ?? '') == 'active').toList();
     } else if (_filter == 'Completed') {
       records = records.where((r) => (r['status'] ?? '') == 'completed').toList();
     }
+    
+    // Apply search filter
     if (_searchQuery.isNotEmpty) {
       records = records
           .where(
-            (r) => (r['crop_name'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()),
+            (r) => (r['crop_name'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                   (r['batch_name'] ?? '').toString().toLowerCase().contains(_searchQuery.toLowerCase()),
           )
           .toList();
     }
+    
+    // Sort: Active first, then by date (latest first)
+    records.sort((a, b) {
+      // First, sort by status (active status = 0, completed status = 1)
+      final statusA = (a['status'] ?? '') == 'active' ? 0 : 1;
+      final statusB = (b['status'] ?? '') == 'active' ? 0 : 1;
+      
+      if (statusA != statusB) {
+        return statusA.compareTo(statusB);
+      }
+      
+      // Then sort by date (latest first) - use end_date for completed, start_date for active
+      final dateFieldA = (a['status'] == 'active') ? (a['start_date'] ?? a['start_time']) : (a['end_date'] ?? a['end_time']);
+      final dateFieldB = (b['status'] == 'active') ? (b['start_date'] ?? b['start_time']) : (b['end_date'] ?? b['end_time']);
+      
+      final dateA = DateTime.tryParse(dateFieldA?.toString() ?? '') ?? DateTime(2000);
+      final dateB = DateTime.tryParse(dateFieldB?.toString() ?? '') ?? DateTime(2000);
+      
+      return dateB.compareTo(dateA); // Descending order (latest first)
+    });
+    
     return records;
   }
 
@@ -97,6 +123,10 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Records'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -134,11 +164,6 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
               children: [
                 Row(
                   children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: 4),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
@@ -190,7 +215,7 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
               controller: _searchController,
               onChanged: (v) => setState(() => _searchQuery = v),
               decoration: InputDecoration(
-                hintText: 'Search by crop name...',
+                hintText: 'Search by crop or batch name...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -344,7 +369,7 @@ class _MyRecordsPageState extends State<MyRecordsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  (record['crop_name'] ?? 'Unknown').toString(),
+                  (record['batch_name'] ?? record['crop_name'] ?? 'Unknown').toString(),
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,

@@ -685,7 +685,7 @@ class _ActiveBatchTimerCardState extends State<_ActiveBatchTimerCard> {
         ),
         const SizedBox(height: 16),
         Text(
-          '${batch["crop_emoji"] ?? ""}  ${batch["crop_name"] ?? ""}',
+          '${batch["crop_emoji"] ?? ""}  ${batch["batch_name"] ?? batch["crop_name"] ?? ""}',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
