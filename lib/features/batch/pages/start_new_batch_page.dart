@@ -13,17 +13,19 @@ class StartNewBatchPage extends StatefulWidget {
   State<StartNewBatchPage> createState() => _StartNewBatchPageState();
 }
 
+
 class _StartNewBatchPageState extends State<StartNewBatchPage> {
   // State Variables
   int _selectedCropIndex = 0;
   bool _isAutoMode = true;
   double _targetTemp = 60.0;
   bool _isDrying = false; // Tracks if a batch is active
-  
+
   // Controllers
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _traysController = TextEditingController();
   final TextEditingController _durationController = TextEditingController();
+  final TextEditingController _batchNameController = TextEditingController();
 
   @override
   void initState() {
@@ -36,6 +38,7 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
     _weightController.dispose();
     _traysController.dispose();
     _durationController.dispose();
+    _batchNameController.dispose();
     super.dispose();
   }
 
@@ -119,6 +122,8 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
       "duration": int.tryParse(_durationController.text) ?? selectedCrop.durationHours,
       "start_date": DateTime.now().toIso8601String(),
       "status": "active",
+      if (!_isAutoMode && _batchNameController.text.trim().isNotEmpty)
+        "batch_name": _batchNameController.text.trim(),
     };
 
     showDialog(
@@ -253,6 +258,10 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
                 Expanded(child: _buildField('Trays Used', '1', _traysController, isDark, cardColor, keyboard: TextInputType.number)),
               ],
             ),
+            if (!_isAutoMode) ...[
+              const SizedBox(height: 20),
+              _buildField('Batch Name', 'Enter batch name', _batchNameController, isDark, cardColor),
+            ],
             const SizedBox(height: 25),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
