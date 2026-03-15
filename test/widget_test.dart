@@ -22,6 +22,7 @@ void main() {
     // Verify welcome text is displayed
     expect(find.text('Welcome,'), findsOneWidget);
     expect(find.text('Farmer!'), findsOneWidget);
-    expect(find.text('☀️ Solar Dehydrator Dashboard'), findsOneWidget);
+    expect(find.text('Solar Dehydrator Dashboard'), findsOneWidget);
+    expect(find.byIcon(Icons.wb_sunny), findsOneWidget);
   });
 }

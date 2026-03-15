@@ -24,8 +24,13 @@ class DashboardScreen extends StatelessWidget {
                   children: [
                     Text("Welcome,", style: TextStyle(color: Colors.white, fontSize: 16)),
                     Text("Farmer!", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 4),
-                    Text("☀️ Solar Dehydrator Dashboard", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Row(
+                      children: [
+                        Icon(Icons.wb_sunny, color: Colors.white70, size: 14),
+                        const SizedBox(width: 4),
+                        const Text("Solar Dehydrator Dashboard", style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      ],
+                    ),
                   ],
                 ),
                 Row(
@@ -73,8 +78,7 @@ class DashboardScreen extends StatelessWidget {
                       const Text("Tomato", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.brown)),
                       const Text("Day 1 of drying", style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w500)),
                       const Text("Started: 11/17/2025", style: TextStyle(fontSize: 12, color: Colors.black45)),
-                      const SizedBox(height: 12), 
-                      const SizedBox(height: 16),
+                      
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
