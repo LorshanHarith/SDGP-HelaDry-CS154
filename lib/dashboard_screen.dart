@@ -1,5 +1,6 @@
 import 'drying_guide_screen.dart';
 import 'package:flutter/material.dart';
+import 'my_records_screen.dart';
 import 'start_batch_screen.dart';
 import 'drying_report_screen.dart';
 
@@ -112,9 +113,9 @@ class DashboardScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // 3. My Records Link (Future Page)
+                // 3. My Records Link
                 GestureDetector(
-                  onTap: () => _showPlaceholder(context, "My Records", const Color(0xFFAA33FF)),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MyRecordsScreen())),
                   child: const DashboardCard(color: Color(0xFFAA33FF), icon: Icons.description, title: "My Records", subtitle: "View past batches & reports"),
                 ),
                 const SizedBox(height: 16),
