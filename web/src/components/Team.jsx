@@ -1,33 +1,51 @@
 function Team() {
 
   const team = [
-    {name:"Aman", image:"/Aman.jpeg"},
-    {name:"Asjath", image:"/Asjath.jpeg"},
-    {name:"Dulnindu", image:"/Dulnindu.jpeg"},
-    {name:"Lorshan", image:"/Lorshan.jpeg"},
-    {name:"Drian", image:"/Drian.jpeg"},
-    {name:"Wethum", image:"/Wethum.jpeg"},
-    {name:"Kabilesh", image:"/Kabilesh.jpeg"},
+    {name:"Aman", role:"Frontend Developer", image:"/Aman.jpeg"},
+    {name:"Asjath", role:"IoT Developer", image:"/Asjath.jpeg"},
+    {name:"Dulnindu", role:"Backend Developer", image:"/Dulnindu.jpeg"},
+    {name:"Lorshan", role:"Research Lead", image:"/Lorshan.jpeg"},
+    {name:"Drian", role:"Research Lead", image:"/Drian.jpeg"},
+    {name:"Wethum", role:"Research Lead", image:"/Wethum.jpeg"},
+
+
+
   ];
 
   return (
 
-    <section className="py-16 text-center">
+    <section className="py-20 bg-gray-100 text-center">
 
-      <h2 className="text-3xl font-bold">Our Team</h2>
+      <h2 className="text-4xl font-bold text-green-700">
+        Meet Our Team
+      </h2>
 
-      <div className="flex justify-center gap-10 mt-10">
+      <p className="mt-3 text-gray-600">
+        The innovators behind the HelaDry Solar Dehydrator
+      </p>
+
+      <div className="flex justify-center gap-10 mt-12 flex-wrap">
 
         {team.map((member,index)=>(
           
-          <div key={index}>
+          <div
+            key={index}
+            className="bg-white shadow-lg rounded-xl p-6 w-60 hover:scale-105 transition duration-300"
+          >
 
             <img
               src={member.image}
-              className="w-32 h-32 rounded-full"
+              alt={member.name}
+              className="w-32 h-32 object-cover rounded-full mx-auto"
             />
 
-            <p>{member.name}</p>
+            <h3 className="mt-4 text-xl font-semibold">
+              {member.name}
+            </h3>
+
+            <p className="text-gray-500">
+              {member.role}
+            </p>
 
           </div>
 
