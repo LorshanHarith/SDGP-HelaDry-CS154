@@ -1,24 +1,25 @@
-import React from "react";
-
 function Navbar() {
   return (
-    <nav className="flex justify-between items-center p-4 bg-green-700 text-white">
-      
-      <div className="flex items-center gap-2">
-        <img src="/logo.png" alt="HelaDry Logo" className="w-10"/>
-        <h1 className="text-xl font-bold">HelaDry</h1>
+    <nav className="sticky top-0 z-50 bg-white shadow-md">
+
+      <div className="max-w-6xl mx-auto flex justify-between items-center p-4">
+
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" className="w-10"/>
+          <h1 className="text-xl font-bold text-green-700">HelaDry</h1>
+        </div>
+
+        <ul className="flex gap-8 text-gray-700 font-medium">
+          <li className="hover:text-green-700 cursor-pointer">Home</li>
+          <li className="hover:text-green-700 cursor-pointer">Features</li>
+          <li className="hover:text-green-700 cursor-pointer">Dashboard</li>
+          <li className="hover:text-green-700 cursor-pointer">Team</li>
+        </ul>
+
       </div>
 
-      <ul className="flex gap-6">
-        <li className="cursor-pointer hover:text-yellow-300">Home</li>
-        <li className="cursor-pointer hover:text-yellow-300">About</li>
-        <li className="cursor-pointer hover:text-yellow-300">Features</li>
-        <li className="cursor-pointer hover:text-yellow-300">Team</li>
-        <li className="cursor-pointer hover:text-yellow-300">Contact</li>
-      </ul>
-
     </nav>
-  );
+  )
 }
 
-export default Navbar;
+export default Navbar
