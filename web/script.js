@@ -293,85 +293,44 @@
     });
 
     (function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a754526e1fc513a',t:'MTc2NDYyMDI2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();
-    // Combined splash + solar zoom intro using GSAP
+
+    // Simple logo splash -> solar zoom -> site intro (no GSAP required)
     window.addEventListener('load', () => {
       const splash = document.getElementById('splash-screen');
       const appWrapper = document.querySelector('.app-wrapper');
       const solarBg = document.getElementById('solar-zoom-bg');
 
-      // Fallback: if GSAP is missing, just fade splash and show app after 3.5s
-      if (!window.gsap || !solarBg || !appWrapper || !splash) {
-        setTimeout(() => {
-          splash.classList.add('fade-out');
-          appWrapper.classList.add('visible');
-        }, 3500);
+      if (!splash || !appWrapper || !solarBg) {
+        if (appWrapper) appWrapper.classList.add('visible');
         return;
       }
 
       const totalFrames = 121;
-      const framePaths = Array.from({ length: totalFrames }, (_, i) => {
-        const frameNumber = String(i + 1).padStart(3, '0');
-        return `SolarPanelZoomPNG/ezgif-frame-${frameNumber}.png`;
-      });
+      let currentFrame = 1;
 
-      // Preload frames for smooth playback
-      framePaths.forEach(src => {
-        const img = new Image();
-        img.src = src;
-      });
-
-      const state = { frame: 0 };
-
-      const renderFrame = () => {
-        const index = Math.max(
-          0,
-          Math.min(totalFrames - 1, Math.round(state.frame))
-        );
-        solarBg.style.backgroundImage = `url('${framePaths[index]}')`;
+      const updateFrame = () => {
+        const frameNumber = String(currentFrame).padStart(3, '0');
+        solarBg.style.backgroundImage = `url('SolarPanelZoomPNG/ezgif-frame-${frameNumber}.png')`;
       };
 
-      renderFrame(); // initial static frame behind the splash
+      // Set initial frame behind the logo
+      updateFrame();
 
-      // Timeline: 1) hold logo, 2) play zoom, 3) fade out splash + reveal app
-      const tl = gsap.timeline();
+      // Hold the logo for a short time, then play the zoom sequence once
+      setTimeout(() => {
+        const frameInterval = 40; // ms per frame (~4.8s for 121 frames)
+        const timer = setInterval(() => {
+          currentFrame += 1;
 
-      // Hold the logo splash for a moment
-      tl.to({}, { duration: 1.6 }); // just a delay
-
-      // Play the solar panel zoom while transitioning into the site
-      tl.to(
-        state,
-        {
-          frame: totalFrames - 1,
-          duration: 2.2,
-          ease: 'none',
-          onUpdate: renderFrame,
-        },
-        '<' // start at same time as next tweens
-      );
-
-      // Fade out the splash
-      tl.to(
-        splash,
-        {
-          opacity: 0,
-          scale: 1.05,
-          pointerEvents: 'none',
-          duration: 1.2,
-        },
-        '<0.4' // start slightly after zoom begins
-      );
-
-      // Fade in the main app
-      tl.to(
-        appWrapper,
-        {
-          opacity: 1,
-          duration: 1.2,
-          onStart: () => {
+          if (currentFrame > totalFrames) {
+            clearInterval(timer);
+            // After zoom finishes, fade out splash and reveal the site
+            splash.classList.add('fade-out');
             appWrapper.classList.add('visible');
-          },
-        },
-        '<' // overlap with splash fade
-      );
+            return;
+          }
+
+          updateFrame();
+        }, frameInterval);
+      }, 1200); // logo hold duration before zoom starts
     });
