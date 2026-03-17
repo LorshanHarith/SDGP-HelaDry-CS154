@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import '../../../services/session_store.dart';
 import '../../../services/mock_device_service.dart';
 import '../../../services/device_setup_service.dart'; // Import the new registration service
+import '../../../services/device_transport.dart';
+import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
+import 'dart:async';
 import '../../../app/routes.dart';
-import '../../../app/mock_data.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/primary_button.dart';
 import '../../../widgets/mode_toggle_button.dart';
@@ -19,51 +21,66 @@ class PairDevicePage extends StatefulWidget {
 class _PairDevicePageState extends State<PairDevicePage> {
   // idle, scanning, results
   String _state = 'idle';
-  List<MockDevice> _devices = [];
+  List<DiscoveredDevice> _devices = [];
   bool _isConnecting = false;
   bool _troubleshootExpanded = false;
+  StreamSubscription? _scanSub;
 
-  void _startScan() async {
+  @override
+  void dispose() {
+    _scanSub?.cancel();
+    DeviceTransport().ble.stopScan();
+    super.dispose();
+  }
+
+  void _startScan() {
     setState(() => _state = 'scanning');
-    final devices = await MockDeviceService.scanForDevices();
-    if (!mounted) return;
-    setState(() {
-      _devices = devices;
-      _state = 'results';
+    DeviceTransport().ble.startScan();
+    _scanSub?.cancel();
+    _scanSub = DeviceTransport().ble.deviceListStream.listen((devices) {
+      if (!mounted) return;
+      setState(() {
+        _devices = devices;
+        if (_devices.isNotEmpty) _state = 'results';
+      });
+    }, onError: (e) {
+      if (!mounted) return;
+      setState(() => _state = 'idle');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    });
+    
+    // Auto-stop scanning after 10s to simulate timeout and show results if any
+    Future.delayed(const Duration(seconds: 10), () {
+      if (!mounted) return;
+      if (_state == 'scanning') {
+         DeviceTransport().ble.stopScan();
+         setState(() {
+            _state = _devices.isNotEmpty ? 'results' : 'idle';
+         });
+      }
     });
   }
 
-  /// This is the key logic that bridges Bluetooth discovery and Flask registration
-  void _connectToDevice(MockDevice device) async {
+  void _connectToDevice(DiscoveredDevice device) async {
     setState(() => _isConnecting = true);
-
+    DeviceTransport().ble.stopScan();
     try {
-      // 1. Simulate/Perform the Bluetooth handshake
-      await MockDeviceService.connectToDevice(device.name);
-      
+      await DeviceTransport().ble.connect(device.id);
       if (!mounted) return;
-
-      // 2. REGISTER with Backend: This links the Device ID to your Firebase UID
-      // This is what prevents the "Device not found" error on the Start Batch page
-      await DeviceSetupService.registerDeviceWithBackend(device.name);
-
-      // 3. Update local session store so the app knows which device is currently active
       final session = context.read<SessionStore>();
-      session.setPairedDevice(device.name, 'HelaDry');
-
-      // 4. Navigate to success page
+      session.setConnectionMode('offline');
+      session.setPairedDevice(device.id, device.name);
+      
+      // Init transport for offline
+      DeviceTransport().init('offline', device.id);
+      
       Navigator.of(context).pushReplacementNamed(AppRoutes.pairSuccess);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Registration failed: ${e.toString()}'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _isConnecting = false);
+      setState(() => _isConnecting = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Connection failed')));
     }
+  }
   }
 
   @override
@@ -245,27 +262,22 @@ class _PairDevicePageState extends State<PairDevicePage> {
     );
   }
 
-  Widget _buildDeviceItem(MockDevice device, bool isDark) {
+  Widget _buildDeviceItem(DiscoveredDevice device, bool isDark) {
     final accentColor = isDark
         ? const Color(0xFF00D4AA)
         : const Color(0xFF1976D2);
 
-    Color qualityColor;
-    switch (device.quality) {
-      case 'Excellent':
-        qualityColor = const Color(0xFF4CAF50);
-        break;
-      case 'Good':
-        qualityColor = const Color(0xFF66BB6A);
-        break;
-      case 'Fair':
-        qualityColor = const Color(0xFFFFA726);
-        break;
-      case 'Weak':
-        qualityColor = const Color(0xFFEF5350);
-        break;
-      default:
-        qualityColor = const Color(0xFF8892B0);
+    String quality = 'Weak';
+    Color qualityColor = const Color(0xFFEF5350);
+    if (device.rssi > -60) {
+      quality = 'Excellent';
+      qualityColor = const Color(0xFF4CAF50);
+    } else if (device.rssi > -70) {
+      quality = 'Good';
+      qualityColor = const Color(0xFF66BB6A);
+    } else if (device.rssi > -85) {
+      quality = 'Fair';
+      qualityColor = const Color(0xFFFFA726);
     }
 
     return Container(
@@ -302,7 +314,7 @@ class _PairDevicePageState extends State<PairDevicePage> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '${device.quality}  •  ${device.rssi} dBm',
+                      '$quality  •  ${device.rssi} dBm',
                       style: TextStyle(
                         fontSize: 12,
                         color: isDark

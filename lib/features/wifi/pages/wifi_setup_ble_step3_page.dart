@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../services/session_store.dart';
-import '../../../services/mock_wifi_service.dart';
+import '../../../services/device_transport.dart';
+import 'dart:async';
+import 'dart:convert';
 import '../../../app/routes.dart';
 import '../../../widgets/stepper_header.dart';
 import '../../../widgets/primary_button.dart';
@@ -25,6 +27,7 @@ class _WifiSetupBleStep3PageState extends State<WifiSetupBleStep3Page> {
   bool _isConnecting = false;
   String _selectedSsid = '';
   bool _isHiddenNetwork = false;
+  StreamSubscription? _ackSub;
 
   @override
   void didChangeDependencies() {
@@ -57,6 +60,7 @@ class _WifiSetupBleStep3PageState extends State<WifiSetupBleStep3Page> {
   void dispose() {
     _passwordController.dispose();
     _ssidController.dispose();
+    _ackSub?.cancel();
     super.dispose();
   }
 
@@ -70,20 +74,47 @@ class _WifiSetupBleStep3PageState extends State<WifiSetupBleStep3Page> {
 
     setState(() => _isConnecting = true);
 
-    await MockWifiService.connectToNetwork(
-      effectiveSsid,
-      _passwordController.text,
-    );
+    _ackSub?.cancel();
+    _ackSub = DeviceTransport().ble.ackStream.listen((jsonStr) {
+      try {
+        final decoded = jsonDecode(jsonStr);
+        if (decoded['cmd'] == 'SET_WIFI_CREDS') {
+           if (decoded['status'] == 'done') {
+              if (!mounted) return;
+              final session = context.read<SessionStore>();
+              session.setSelectedWifi(effectiveSsid);
+              session.markWifiConfigured();
+              if (_rememberNetwork) {
+                session.saveNetwork(effectiveSsid);
+              }
+              
+              // Switch app to online mode
+              DeviceTransport().switchMode('online');
+              session.setConnectionMode('online');
+              
+              Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+           } else {
+              if (!mounted) return;
+              setState(() => _isConnecting = false);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to set Wi-Fi credentials.')));
+           }
+        }
+      } catch(e) {}
+    });
 
-    if (!mounted) return;
-    final session = context.read<SessionStore>();
-    session.setSelectedWifi(effectiveSsid);
-    session.markWifiConfigured();
-    if (_rememberNetwork) {
-      session.saveNetwork(effectiveSsid);
-    }
-
-    Navigator.of(context).pushReplacementNamed(AppRoutes.dashboard);
+    DeviceTransport().sendCommand('SET_WIFI_CREDS', {
+      'ssid': effectiveSsid,
+      'pass': _passwordController.text,
+    });
+    
+    // Timeout fallback
+    Future.delayed(const Duration(seconds: 10), () {
+      if (!mounted) return;
+      if (_isConnecting) {
+         setState(() => _isConnecting = false);
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Connection timeout. Please try again.')));
+      }
+    });
   }
 
   @override

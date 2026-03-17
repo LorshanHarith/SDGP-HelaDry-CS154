@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart'; // To access SessionStore
 import '../../../services/session_store.dart';
 import '../../../app/mock_data.dart';
+import '../../../widgets/primary_button.dart';
+import '../../../services/device_transport.dart';
 
 class StartNewBatchPage extends StatefulWidget {
   const StartNewBatchPage({super.key});
@@ -52,6 +54,34 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
     }
   }
 
+  void _handleStartBatch() async {
+    setState(() => _isLoading = true);
+    
+      final cropName = MockData.crops[_selectedCropIndex].name;
+      final hours = double.tryParse(_durationController.text) ?? 12.0;
+
+      await DeviceTransport().sendCommand('START_SESSION', {
+        'crop': cropName,
+        'target_temp': _targetTemp,
+        'hours': hours,
+      });
+
+      if (!mounted) return;
+    
+      final session = context.read<SessionStore>();
+      session.setActiveBatch('BATCH-${DateTime.now().millisecondsSinceEpoch}', cropName);
+    
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Batch started successfully!'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Color(0xFF4CAF50),
+        ),
+      );
+    }
+  }
+
   // Logic to handle the STOP command
   Future<void> _handleStopBatch() async {
     final session = context.read<SessionStore>();
@@ -60,6 +90,32 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(child: CircularProgressIndicator()),
+=======
+  void _handleStartBatch() async {
+    setState(() => _isLoading = true);
+    
+    final cropName = MockData.crops[_selectedCropIndex].name;
+    final hours = double.tryParse(_durationController.text) ?? 12.0;
+
+    await DeviceTransport().sendCommand('START_SESSION', {
+      'crop': cropName,
+      'target_temp': _targetTemp,
+      'hours': hours,
+    });
+
+    if (!mounted) return;
+    
+    final session = context.read<SessionStore>();
+    session.setActiveBatch('BATCH-${DateTime.now().millisecondsSinceEpoch}', cropName);
+    
+    setState(() => _isLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Batch started successfully!'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Color(0xFF4CAF50),
+      ),
+>>>>>>> firmware
     );
 
     try {
