@@ -57,6 +57,7 @@
       background-position: center;
       z-index: -1;
       pointer-events: none;
+      background-image: url('SolarPanelZoomPNG/ezgif-frame-001.png');
     }
 
     /* Splash Screen */

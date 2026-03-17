@@ -321,3 +321,45 @@
     updateZoomImage(); // Set initial image
 
     (function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a754526e1fc513a',t:'MTc2NDYyMDI2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();
+
+
+// GSAP scroll-driven solar panel zoom
+if (window.gsap) {
+  gsap.registerPlugin(ScrollTrigger);
+
+  const solarBg = document.getElementById('solar-zoom-bg');
+  if (solarBg) {
+    const totalFrames = 121; // adjust to your real frame count
+    const framePaths = Array.from({ length: totalFrames }, (_, i) => {
+      const frameNumber = String(i + 1).padStart(3, '0');
+      // Frames live in web/SolarPanelZoomPNG
+      return `SolarPanelZoomPNG/ezgif-frame-${frameNumber}.png`;
+    });
+
+    // Preload frames for smoother animation
+    framePaths.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+
+    const state = { frame: 0 };
+    const renderFrame = () => {
+      const index = Math.max(0, Math.min(totalFrames - 1, Math.round(state.frame)));
+      solarBg.style.backgroundImage = `url('${framePaths[index]}')`;
+    };
+
+    renderFrame(); // initial
+
+    gsap.to(state, {
+      frame: totalFrames - 1,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: '#hero',       // start animation at hero
+        start: 'top top',
+        end: 'bottom top',      // finishes as user scrolls past hero
+        scrub: true,            // tie to scroll
+      },
+      onUpdate: renderFrame,
+    });
+  }
+}        
