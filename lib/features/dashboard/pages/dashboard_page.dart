@@ -31,25 +31,29 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    _liveDataService.listenToLiveData(_deviceId).listen((data) {
-      if (mounted) {
-        setState(() {
-          _temperature = data['temperature'] ?? 0.0;
-          _humidity = data['humidity'] ?? 0.0;
-          _airflow = data['airflow'] ?? 0;
-          _isLoadingLive = false;
-        });
-      }
-    });
+    try {
+      _liveDataService.listenToLiveData(_deviceId).listen((data) {
+        if (mounted) {
+          setState(() {
+            _temperature = data['temperature'] ?? 0.0;
+            _humidity = data['humidity'] ?? 0.0;
+            _airflow = data['airflow'] ?? 0;
+            _isLoadingLive = false;
+          });
+        }
+      });
 
-    _batchService.listenToActiveBatch().listen((batch) {
-      if (mounted) {
-        setState(() {
-          _activeBatch = batch;
-          _isLoadingBatch = false;
-        });
-      }
-    });
+      _batchService.listenToActiveBatch().listen((batch) {
+        if (mounted) {
+          setState(() {
+            _activeBatch = batch;
+            _isLoadingBatch = false;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Error in initState: $e');
+    }
   }
 
   @override
@@ -333,16 +337,31 @@ class _DashboardPageState extends State<DashboardPage> {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () async {
-  try {
-    await _batchService.stopBatch(_activeBatch!['sessionId']);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Batch stopped successfully! ✅'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Color(0xFF4CAF50),
-      ),
-    );
+                            try {
+                              await _batchService.stopBatch(
+                                _activeBatch!['sessionId'],
+                              );
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Batch stopped successfully! ✅',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Color(0xFF4CAF50),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to stop batch: $e'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,
