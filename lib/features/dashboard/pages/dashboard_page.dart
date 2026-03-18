@@ -316,7 +316,9 @@ class _DashboardPageState extends State<DashboardPage> {
                           context,
                           Icons.thermostat,
                           'Temperature',
-                          _isLoadingLive ? '--' : '${_temperature.toStringAsFixed(1)}°C',
+                          _isLoadingLive
+                              ? '--'
+                              : '${_temperature.toStringAsFixed(1)}°C',
                           const Color(0xFFEF5350),
                           isDark,
                         ),
@@ -327,7 +329,9 @@ class _DashboardPageState extends State<DashboardPage> {
                           context,
                           Icons.water_drop,
                           'Humidity',
-                          _isLoadingLive ? '--' : '${_humidity.toStringAsFixed(1)}%',
+                          _isLoadingLive
+                              ? '--'
+                              : '${_humidity.toStringAsFixed(1)}%',
                           const Color(0xFF42A5F5),
                           isDark,
                         ),
@@ -541,9 +545,7 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isDark
-              ? color.withOpacity(0.15)
-              : color.withOpacity(0.1),
+          color: isDark ? color.withOpacity(0.15) : color.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.3)),
         ),
