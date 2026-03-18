@@ -332,7 +332,17 @@ class _DashboardPageState extends State<DashboardPage> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () async {
+  try {
+    await _batchService.stopBatch(_activeBatch!['sessionId']);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Batch stopped successfully! ✅'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Color(0xFF4CAF50),
+      ),
+    );
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
                             foregroundColor: Colors.white,

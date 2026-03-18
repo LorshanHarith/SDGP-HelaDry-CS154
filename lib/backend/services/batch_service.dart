@@ -5,7 +5,18 @@ class BatchService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseDatabase _db = FirebaseDatabase.instance;
 
-  Stream<Map<String, dynamic>?> listenToActiveBatch() {
+  Stream<Map<String, dynamic>?> listenToActiveBatch()
+  Future <void> stopBatch(String sessionId) async{
+    final user=_auth.currentUser;
+    if(user==null) throw Exception('No user logged in found');
+    await _db.ref('users/${user.uid}/sessions/$sessionId').update({
+      'status':'completed',
+      'endTime':ServerValue.timestamp,
+
+
+    });
+  }
+   {
     final user = _auth.currentUser;
     if (user == null) return Stream.value(null);
 
