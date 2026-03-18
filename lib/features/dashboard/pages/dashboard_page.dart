@@ -4,7 +4,7 @@ import '../../../services/session_store.dart';
 import '../../../app/routes.dart';
 import '../../../app/mock_data.dart';
 import '../../../widgets/app_card.dart';
-import '../../../backend/services/device_link_service.dart';
+import '../../../backend/services/live_data_service.dart';
 import '../../../backend/services/batch_service.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -311,26 +311,88 @@ class _DashboardPageState extends State<DashboardPage> {
                                       fontSize: 12,
                                       color: subtextColor,
                                     ),
-                                    Text(
-            '${_activeBatch!['weight']} kg',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark
-                  ? const Color(0xFFE6F1FF)
-                  : const Color(0xFF1A2D4D),
-            ),
-          ),
-        ],
-      ),
-    ],
-  ),
+                                  ),
+                                  Text(
+                                    '${_activeBatch!['weight']} kg',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? const Color(0xFFE6F1FF)
+                                          : const Color(0xFF1A2D4D),
+                                    ),
                                   ),
                                 ],
                               ),
                             ],
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Stop Batch',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Icon(
+                        Icons.wb_sunny_outlined,
+                        size: 48,
+                        color: subtextColor.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No active drying batch',
+                        style: TextStyle(fontSize: 16, color: subtextColor),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Start a new batch to begin tracking',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: subtextColor.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(
+                            context,
+                          ).pushNamed(AppRoutes.startNewBatch);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isDark
+                              ? const Color(0xFF1A2D4D)
+                              : const Color(0xFF1976D2),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Start New Batch',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ],
                   ],
