@@ -11,7 +11,7 @@ class DeviceSetupService {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final token = await user.getIdToken();
+      final token = await user.getIdToken(true);
 
       final response = await http.post(
         Uri.parse('$baseUrl/device/register'),

@@ -26,7 +26,7 @@ class ApiService {
 
   Future<Map<String, String>> _getAuthHeaders() async {
     // This pulls the unique ID Token from the user who logged in on your Login Page
-    String? token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    String? token = await FirebaseAuth.instance.currentUser?.getIdToken(true);
     
     return {
       'Content-Type': 'application/json',
