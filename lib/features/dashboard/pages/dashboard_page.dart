@@ -36,7 +36,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final user = FirebaseAuth.instance.currentUser;
       final token = await user?.getIdToken();
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:5000/session/my-sessions'),
+        Uri.parse('http://172.30.161.140:5000/session/my-sessions'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -64,6 +64,11 @@ class _DashboardPageState extends State<DashboardPage> {
     final subtextColor = isDark
         ? const Color(0xFF8892B0)
         : const Color(0xFF64748B);
+    final now = DateTime.now();
+    final hour = now.hour == 0 ? 12 : (now.hour > 12 ? now.hour - 12 : now.hour);
+    final minute = now.minute.toString().padLeft(2, '0');
+    final amPm = now.hour >= 12 ? 'PM' : 'AM';
+    final syncDateStr = '${now.month}/${now.day}/${now.year} $hour:$minute $amPm';
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -133,14 +138,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         children: [
                           IconButton(
                             icon: const Icon(
-                              Icons.calendar_today,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            onPressed: () {},
-                          ),
-                          IconButton(
-                            icon: const Icon(
                               Icons.settings,
                               color: Colors.white,
                               size: 20,
@@ -195,7 +192,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               ),
                             ),
                             Text(
-                              MockData.lastSyncDate,
+                              syncDateStr,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
@@ -368,7 +365,9 @@ class _DashboardPageState extends State<DashboardPage> {
                           context,
                           Icons.thermostat,
                           'Temperature',
-                          '${(metrics['temperature'] as double).toStringAsFixed(0)}°C',
+                          session.useCelsius 
+                              ? '${(metrics['temperature'] as double).toStringAsFixed(0)}°C'
+                              : '${((metrics['temperature'] as double) * 9 / 5 + 32).toStringAsFixed(0)}°F',
                           const Color(0xFFEF5350),
                           isDark,
                         ),
@@ -733,6 +732,8 @@ class _ActiveBatchTimerCardState extends State<_ActiveBatchTimerCard> {
     final batch = widget.batch;
     final isDark = widget.isDark;
     final subtextColor = widget.subtextColor;
+    final session = context.watch<SessionStore>();
+
     return Column(
       children: [
         Text(
@@ -778,7 +779,11 @@ class _ActiveBatchTimerCardState extends State<_ActiveBatchTimerCard> {
             Icon(Icons.thermostat, size: 18, color: subtextColor),
             const SizedBox(width: 4),
             Text(
-              '${batch["temperature"] ?? "-"}°C',
+              batch["temperature"] == null 
+                  ? "-"
+                  : session.useCelsius
+                      ? '${batch["temperature"]}°C'
+                      : '${((batch["temperature"] is num ? batch["temperature"].toDouble() : double.tryParse(batch["temperature"].toString()) ?? 0.0) * 9 / 5 + 32).round()}°F',
               style: TextStyle(fontSize: 15, color: subtextColor),
             ),
             const SizedBox(width: 16),
