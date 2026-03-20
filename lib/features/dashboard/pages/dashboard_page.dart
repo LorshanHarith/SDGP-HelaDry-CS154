@@ -8,7 +8,12 @@ import '../../../services/device_transport.dart';
 import '../../../app/routes.dart';
 import '../../../app/mock_data.dart';
 import '../../../widgets/app_card.dart';
+<<<<<<< HEAD
 import 'package:firebase_auth/firebase_auth.dart';
+=======
+import '../../../backend/services/live_data_service.dart';
+import '../../../backend/services/batch_service.dart';
+>>>>>>> sensor-dashboard
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -18,6 +23,7 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+<<<<<<< HEAD
   bool _checkedActive = false;
 
   @override
@@ -57,6 +63,49 @@ class _DashboardPageState extends State<DashboardPage> {
     } catch (_) {}
   }
 
+=======
+  final LiveDataService _liveDataService = LiveDataService();
+
+  double _temperature = 0.0;
+  double _humidity = 0.0;
+  int _airflow = 0;
+  bool _isLoadingLive = true;
+
+  final BatchService _batchService = BatchService();
+  Map<String, dynamic>? _activeBatch;
+  bool _isLoadingBatch = true;
+
+  static const String _deviceId = 'device-001';
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _liveDataService.listenToLiveData(_deviceId).listen((data) {
+        if (mounted) {
+          setState(() {
+            _temperature = data['temperature'] ?? 0.0;
+            _humidity = data['humidity'] ?? 0.0;
+            _airflow = data['airflow'] ?? 0;
+            _isLoadingLive = false;
+          });
+        }
+      });
+
+      _batchService.listenToActiveBatch().listen((batch) {
+        if (mounted) {
+          setState(() {
+            _activeBatch = batch;
+            _isLoadingBatch = false;
+          });
+        }
+      });
+    } catch (e) {
+      debugPrint('Error in initState: $e');
+    }
+  }
+
+>>>>>>> sensor-dashboard
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -274,6 +323,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+<<<<<<< HEAD
                     Icon(
                       metrics.sessionState == 'RUNNING' ? Icons.wb_sunny : Icons.wb_sunny_outlined,
                       size: 48,
@@ -290,11 +340,154 @@ class _DashboardPageState extends State<DashboardPage> {
                       style: TextStyle(
                         fontSize: 13,
                         color: subtextColor.withValues(alpha: 0.7),
+=======
+                    if (_isLoadingBatch)
+                      const CircularProgressIndicator()
+                    else if (_activeBatch != null) ...[
+                      Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Color(0xFF4CAF50),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Active',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: const Color(0xFF4CAF50),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+>>>>>>> sensor-dashboard
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      child: ElevatedButton(
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Crop',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: subtextColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_activeBatch!['crop']}',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? const Color(0xFFE6F1FF)
+                                          : const Color(0xFF1A2D4D),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Weight',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: subtextColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_activeBatch!['weight']} kg',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark
+                                          ? const Color(0xFFE6F1FF)
+                                          : const Color(0xFF1A2D4D),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              await _batchService.stopBatch(
+                                _activeBatch!['sessionId'],
+                              );
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Batch stopped successfully! ✅',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Color(0xFF4CAF50),
+                                ),
+                              );
+                            } catch (e) {
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to stop batch: $e'),
+                                  behavior: SnackBarBehavior.floating,
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Stop Batch',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      Icon(
+                        Icons.wb_sunny_outlined,
+                        size: 48,
+                        color: subtextColor.withOpacity(0.5),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No active drying batch',
+                        style: TextStyle(fontSize: 16, color: subtextColor),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Start a new batch to begin tracking',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: subtextColor.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
                         onPressed: () {
                           Navigator.of(
                             context,
@@ -391,6 +584,12 @@ class _DashboardPageState extends State<DashboardPage> {
                         isDark: isDark,
                         subtextColor: subtextColor,
                       ),
+<<<<<<< HEAD
+=======
+                    ],
+                  ],
+                ),
+>>>>>>> sensor-dashboard
               ),
             ),
 
@@ -424,7 +623,13 @@ class _DashboardPageState extends State<DashboardPage> {
                           context,
                           Icons.thermostat,
                           'Temperature',
+<<<<<<< HEAD
                           '${metrics.tempC.toStringAsFixed(1)}°C',
+=======
+                          _isLoadingLive
+                              ? '--'
+                              : '${_temperature.toStringAsFixed(1)}°C',
+>>>>>>> sensor-dashboard
                           const Color(0xFFEF5350),
                           isDark,
                         ),
@@ -435,7 +640,13 @@ class _DashboardPageState extends State<DashboardPage> {
                           context,
                           Icons.water_drop,
                           'Humidity',
+<<<<<<< HEAD
                           '${metrics.humPct.toStringAsFixed(0)}%',
+=======
+                          _isLoadingLive
+                              ? '--'
+                              : '${_humidity.toStringAsFixed(1)}%',
+>>>>>>> sensor-dashboard
                           const Color(0xFF42A5F5),
                           isDark,
                         ),
@@ -448,9 +659,15 @@ class _DashboardPageState extends State<DashboardPage> {
                       Expanded(
                         child: _buildMetricCard(
                           context,
+<<<<<<< HEAD
                           Icons.toys,
                           'Fan Speed',
                           '${metrics.fanSpeedPct}%',
+=======
+                          Icons.air,
+                          'Airflow',
+                          _isLoadingLive ? '--' : '$_airflow',
+>>>>>>> sensor-dashboard
                           const Color(0xFF66BB6A),
                           isDark,
                         ),
@@ -645,6 +862,7 @@ class _DashboardPageState extends State<DashboardPage> {
     bool isDark,
     VoidCallback onTap,
   ) {
+<<<<<<< HEAD
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -670,6 +888,38 @@ class _DashboardPageState extends State<DashboardPage> {
               border: Border.all(
                 color: color.withOpacity(isDark ? 0.4 : 0.2),
                 width: 1.5,
+=======
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? color.withOpacity(0.15) : color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withOpacity(isDark ? 0.3 : 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: isDark
+                    ? const Color(0xFFE6F1FF)
+                    : const Color(0xFF1A2D4D),
+>>>>>>> sensor-dashboard
               ),
             ),
             child: AspectRatio(
