@@ -66,7 +66,7 @@ class _ManualControlsPageState extends State<ManualControlsPage> {
       final token = await user?.getIdToken();
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/device/update-temperature'),
+        Uri.parse('http://192.168.1.101:5000/device/update-temperature'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
@@ -167,7 +167,7 @@ class _ManualControlsPageState extends State<ManualControlsPage> {
 
       // Send temperature
       final tempResponse = await http.post(
-        Uri.parse('http://10.0.2.2:5000/device/update-temperature'),
+        Uri.parse('http://192.168.1.101:5000/device/update-temperature'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
@@ -269,7 +269,7 @@ class _ManualControlsPageState extends State<ManualControlsPage> {
       final token = await user?.getIdToken();
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/device/stop'),
+        Uri.parse('http://192.168.1.101:5000/device/stop'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+import 'firebase_service.dart';
 
 // Active Drying Batch
 class SessionStore extends ChangeNotifier {
@@ -29,8 +31,19 @@ class SessionStore extends ChangeNotifier {
   }
 
   Map<String, dynamic>? _activeBatch;
+  Map<String, dynamic> _liveMetrics = {
+    'temperature': 0.0,
+    'humidity': 0.0,
+    'fanSpeed': 0,
+    'heaterStatus': 'OFF',
+    'battery': 0.0,
+    'solarStatus': 'N/A',
+  };
+  StreamSubscription? _metricsSubscription;
 
   Map<String, dynamic>? get activeBatch => _activeBatch;
+  Map<String, dynamic> get liveMetrics => _liveMetrics;
+
   void setActiveBatch(Map<String, dynamic>? batch) {
     _activeBatch = batch;
     notifyListeners();
@@ -117,6 +130,8 @@ class SessionStore extends ChangeNotifier {
     _prefs?.remove('userName');
     _prefs?.remove('userEmail');
 
+    stopListeningToMetrics();
+
     notifyListeners();
   }
 
@@ -130,7 +145,26 @@ class SessionStore extends ChangeNotifier {
     _pairedDeviceId = id;
     _pairedDeviceName = name;
     print("SessionStore: Linked Device ID - $_pairedDeviceId");
+    
+    // Start listening to metrics when a device is paired
+    startListeningToMetrics(id);
+    
     notifyListeners();
+  }
+
+  void startListeningToMetrics(String deviceId) {
+    stopListeningToMetrics();
+    _metricsSubscription = FirebaseService().listenToLiveMetrics(deviceId).listen((metrics) {
+      if (metrics.isNotEmpty) {
+        _liveMetrics = metrics;
+        notifyListeners();
+      }
+    });
+  }
+
+  void stopListeningToMetrics() {
+    _metricsSubscription?.cancel();
+    _metricsSubscription = null;
   }
 
   // WiFi

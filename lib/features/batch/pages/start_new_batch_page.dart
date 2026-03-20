@@ -67,7 +67,7 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
       final token = await user?.getIdToken();
 
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:5000/device/stop'),
+        Uri.parse('http://192.168.1.101:5000/device/stop'),
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
@@ -138,7 +138,7 @@ class _StartNewBatchPageState extends State<StartNewBatchPage> {
       
       String? firebaseToken = await user.getIdToken(true); 
 
-      final url = Uri.parse('http://10.0.2.2:5000/device/start'); 
+      final url = Uri.parse('http://192.168.1.101:5000/device/start'); 
       
       final response = await http.post(
         url,
