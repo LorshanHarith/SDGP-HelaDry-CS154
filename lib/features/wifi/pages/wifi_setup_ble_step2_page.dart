@@ -543,9 +543,7 @@ class _WifiSetupBleStep2PageState extends State<WifiSetupBleStep2Page> {
               ),
             ),
             if (isSelected)
-              Icon(Icons.check_circle, color: accentColor, size: 20)
-            else if (network.isSecured)
-              Icon(Icons.lock, size: 16, color: subtextColor),
+              Icon(Icons.check_circle, color: accentColor, size: 20),
           ],
         ),
       ),

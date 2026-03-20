@@ -23,6 +23,7 @@ class PairDevicePage extends StatefulWidget {
 class _PairDevicePageState extends State<PairDevicePage> {
   bool _isConnecting = false;
   bool _troubleshootExpanded = false;
+  StreamSubscription? _scanSub;
 
   void _startScan() async {
     final Map<Permission, PermissionStatus> statuses = await [
@@ -48,7 +49,7 @@ class _PairDevicePageState extends State<PairDevicePage> {
 
   void _connectToDevice(final device) async {
     setState(() => _isConnecting = true);
-
+    DeviceTransport().ble.stopScan();
     try {
       final ble = context.read<BleService>();
       final success = await ble.connect(device);
@@ -118,6 +119,7 @@ class _PairDevicePageState extends State<PairDevicePage> {
     } finally {
       if (mounted) setState(() => _isConnecting = false);
     }
+  }
   }
 
   @override
