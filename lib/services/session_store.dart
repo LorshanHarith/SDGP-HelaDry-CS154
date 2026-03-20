@@ -25,6 +25,7 @@ class SessionStore extends ChangeNotifier {
   bool _overTempAlert = true;
   bool _lowBatteryAlert = true;
   bool _sensorFaultAlert = true;
+  Map<String, dynamic>? _activeBatch;
 
   // Getters
   bool get isLoggedIn => _isLoggedIn;
@@ -45,6 +46,7 @@ class SessionStore extends ChangeNotifier {
   bool get overTempAlert => _overTempAlert;
   bool get lowBatteryAlert => _lowBatteryAlert;
   bool get sensorFaultAlert => _sensorFaultAlert;
+  Map<String, dynamic>? get activeBatch => _activeBatch;
 
   // Auth
   void login({String name = '', String email = ''}) {
@@ -67,6 +69,7 @@ class SessionStore extends ChangeNotifier {
     _fanSpeed = 50;
     _heaterOn = false;
     _targetTemp = 55;
+    _activeBatch = null;
     notifyListeners();
   }
 
@@ -151,6 +154,11 @@ class SessionStore extends ChangeNotifier {
 
   void setSensorFaultAlert(bool val) {
     _sensorFaultAlert = val;
+    notifyListeners();
+  }
+
+  void setActiveBatch(Map<String, dynamic>? batch) {
+    _activeBatch = batch;
     notifyListeners();
   }
 
