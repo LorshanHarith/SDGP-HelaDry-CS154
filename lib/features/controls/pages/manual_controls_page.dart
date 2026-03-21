@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:developer' as developer;
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../services/session_store.dart';
+import '../../../services/device_transport.dart';
 import '../../../widgets/app_card.dart';
 import '../../../widgets/primary_button.dart';
 
@@ -32,6 +33,24 @@ class _ManualControlsPageState extends State<ManualControlsPage> {
     developer.log('Manual Controls Init - Default Temp=$_defaultTemp, Current Temp=$_targetTemp');
   }
 
+  void _applyFanSpeed() {
+    final session = context.read<SessionStore>();
+    session.setFanSpeed(_fanSpeed);
+    
+    int hardwareFanSpeed = (_fanSpeed * 2.55).toInt();
+    DeviceTransport().sendCommand('SET_MANUAL_OUTPUTS', {
+      'fan_speed': hardwareFanSpeed
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Fan speed set to ${_fanSpeed.toStringAsFixed(0)}%'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+>>>>>>> firmware
+  }
+
   void _applyTemperature() {
     final session = context.read<SessionStore>();
     
@@ -47,11 +66,22 @@ class _ManualControlsPageState extends State<ManualControlsPage> {
       return;
     }
 
-    // Update locally
     session.setTargetTemp(_targetTemp);
-    
-    // Send to backend
-    _sendTemperatureUpdate(deviceId);
+
+    // Send command to device
+    DeviceTransport().sendCommand('SET_MANUAL_OUTPUTS', {
+      'target_temp': _targetTemp,
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Target temperature set to ${_targetTemp.toStringAsFixed(0)}°C',
+        ),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
   }
 
   Future<void> _sendTemperatureUpdate(String deviceId) async {
@@ -229,7 +259,23 @@ class _ManualControlsPageState extends State<ManualControlsPage> {
           ElevatedButton(
             onPressed: () {
               Navigator.of(ctx).pop();
-              _sendEmergencyStop();
+              final session = context.read<SessionStore>();
+              session.emergencyStop();
+              
+              DeviceTransport().sendCommand('EMERGENCY_STOP');
+
+              setState(() {
+                _fanSpeed = 0;
+                _heaterOn = false;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Emergency stop activated!'),
+                  backgroundColor: Color(0xFFEF5350),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+>>>>>>> firmware
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF5350),
@@ -439,6 +485,9 @@ class _ManualControlsPageState extends State<ManualControlsPage> {
                           setState(() => _heaterOn = v);
                           final session = context.read<SessionStore>();
                           session.setHeaterOn(v);
+                          DeviceTransport().sendCommand('SET_MANUAL_OUTPUTS', {
+                             'heater_on': v
+                          });
                         },
                       ),
                     ],
