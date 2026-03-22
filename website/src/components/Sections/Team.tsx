@@ -8,39 +8,39 @@ import { motion } from 'motion/react';
 export default function Team() {
   const team = [
     {
-      name: "W.k.Dulnidu Saranga",
+      name: "W.k.Dulnindu Saranga",
       role: "Lead Engineer and Firmware Developer",
-      image: "https://picsum.photos/seed/team1/600/800",
+      image: "TeamAssets/Dulnindu.jpeg",
     },
     {
       name: "K.D.W.K.Kiriwattuduwa",
       role: "Sustainability Director",
-      image: "https://picsum.photos/seed/team2/600/800",
+      image: "TeamAssets/Wethum.jpeg",
     },
     {
       name: "B.M.Asjath Ahamed",
       role: "Frontend Developer",
-      image: "https://picsum.photos/seed/team3/600/800",
+      image: "TeamAssets/Asjath.jpeg",
     },
     {
       name: "Drian Logaeswaran",
       role: "Developer and Data Analyst",
-      image: "https://picsum.photos/seed/team3/600/800",
+      image: "TeamAssets/Drian.jpeg",
     },
     {
       name: "Kabilesh K",
       role: "Frontend Developer",
-      image: "https://picsum.photos/seed/team3/600/800",
+      image: "TeamAssets/logo.png",
     },
     {
       name: "Seyed Aman Zahir",
       role: "Web application Developer and Backend Developer",
-      image: "https://picsum.photos/seed/team3/600/800",
+      image: "TeamAssets/Aman.jpeg",
     },
     {
       name: "Lorshan Harith Ravichandran",
       role: " Developer and Data Analyst",
-      image: "https://picsum.photos/seed/team3/600/800",
+      image: "TeamAssets/Lorshan.jpeg",
     },
   ];
 
