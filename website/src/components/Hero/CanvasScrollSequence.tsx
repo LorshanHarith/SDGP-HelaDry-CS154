@@ -17,17 +17,33 @@ export default function CanvasScrollSequence() {
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  const frameCount = 121;
+  const frameCount = 120;
   
   const getFramePath = (index: number) => {
-    // Use local solar panel zoom animation frames
-    const frameNumber = String(index + 1).padStart(3, '0');
-    return `/frames/solar-panel/ezgif-frame-${frameNumber}.png`;
+    const solarImages = [
+      'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?auto=format&fit=crop&q=80&w=1920',
+      'https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&q=80&w=1920',
+      'https://images.unsplash.com/photo-1497435334941-8c899ee9e8e9?auto=format&fit=crop&q=80&w=1920',
+      'https://images.unsplash.com/photo-1548337138-e87d889cc369?auto=format&fit=crop&q=80&w=1920',
+      'https://images.unsplash.com/photo-1559302995-f0a16a50083c?auto=format&fit=crop&q=80&w=1920',
+    ];
+    
+    const skyImages = [
+      'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1920',
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1920',
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=1920',
+    ];
+
+    if (index < 60) {
+      return solarImages[index % solarImages.length];
+    } else {
+      return skyImages[index % skyImages.length];
+    }
   };
 
   useEffect(() => {
     let loadedCount = 0;
-    const demoFrames = 121; // Load all 121 solar panel animation frames
+    const demoFrames = 60; // Increased for better preview smoothness
 
     for (let i = 0; i < demoFrames; i++) {
       const img = new Image();
