@@ -193,65 +193,72 @@ class DashboardPage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: AppCard(
                 padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Text(
-                      'Active Drying Batch',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark
-                            ? const Color(0xFFE6F1FF)
-                            : const Color(0xFF1A2D4D),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Icon(
-                      Icons.wb_sunny_outlined,
-                      size: 48,
-                      color: subtextColor.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'No active drying batch',
-                      style: TextStyle(fontSize: 16, color: subtextColor),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Start a new batch to begin tracking',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: subtextColor.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(
-                            context,
-                          ).pushNamed(AppRoutes.startNewBatch);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDark
-                              ? const Color(0xFF1A2D4D)
-                              : const Color(0xFF1976D2),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Start New Batch',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                child: SizedBox(
+                  width: double.infinity, // Forces the Column to fill the card's width
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center, // Centers the children
+                    children: [
+                      Text(
+                        'Active Drying Batch',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? const Color(0xFFE6F1FF)
+                              : const Color(0xFF1A2D4D),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Icon(
+                        Icons.wb_sunny_outlined,
+                        size: 48,
+                        color: subtextColor.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No active drying batch',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, color: subtextColor),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Start a new batch to begin tracking',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: subtextColor.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(
+                              context,
+                            ).pushNamed(AppRoutes.startNewBatch);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isDark
+                                ? const Color(0xFF1A2D4D)
+                                : const Color(0xFF1976D2),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'Start New Batch',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
