@@ -1,5 +1,7 @@
 # SDGP HelaDry — Mobile App UI (UI Branch)
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/1fb1122444e948a3a0a4715de14f949e)](https://app.codacy.com/gh/LorshanHarith/SDGP-HelaDry-CS154?utm_source=github.com&utm_medium=referral&utm_content=LorshanHarith/SDGP-HelaDry-CS154&utm_campaign=Badge_Grade)
+
 This branch contains the **HelaDry mobile application UI** built with **Flutter (Dart)** for the SDGP project **Solar-Powered IoT Hybrid Dehydrator System**.
 
 ✅ **UI-only implementation** (mock data + simulated BLE/Wi-Fi flows)  
