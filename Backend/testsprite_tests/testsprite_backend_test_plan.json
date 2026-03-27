@@ -1,0 +1,57 @@
+[
+  {
+    "id": "TC001",
+    "title": "health check api returns service status",
+    "description": "Test the GET / endpoint to verify it returns a 200 status with JSON containing {status: 'ok', uptime, version} when the service is available."
+  },
+  {
+    "id": "TC002",
+    "title": "device register api with valid authorization and payload",
+    "description": "Test POST /device/register with valid Authorization header and payload {device_id, model, pairing_code} to ensure it returns 201 with {device_id, assigned_to_user} confirming successful registration."
+  },
+  {
+    "id": "TC003",
+    "title": "device register api without authorization header",
+    "description": "Test POST /device/register without Authorization header to verify it returns 401 Unauthorized."
+  },
+  {
+    "id": "TC004",
+    "title": "device start api with valid device and batch parameters",
+    "description": "Test POST /device/start with valid Authorization and payload {device_id, batch_params} to confirm it returns 200 with {session_id, status: 'started'} indicating session start."
+  },
+  {
+    "id": "TC005",
+    "title": "device stop api with active session",
+    "description": "Test POST /device/stop with valid Authorization and payload {device_id, session_id} for an active session to ensure it returns 200 with {session_id, status: 'stopped'} confirming session stop."
+  },
+  {
+    "id": "TC006",
+    "title": "device update temperature with valid target",
+    "description": "Test POST /device/update-temperature with valid Authorization and payload {device_id, target_temperature} within allowed range to verify it returns 200 with confirmation {device_id, target_temperature}."
+  },
+  {
+    "id": "TC007",
+    "title": "device update fan speed with valid payload",
+    "description": "Test POST /device/update-fan-speed with valid Authorization and payload {device_id, fan_speed} to confirm it returns 200 with confirmation {device_id, fan_speed}."
+  },
+  {
+    "id": "TC008",
+    "title": "device list api with valid authorization",
+    "description": "Test GET /device/list with valid Authorization header to verify it returns 200 with an array of devices belonging to the authenticated user."
+  },
+  {
+    "id": "TC009",
+    "title": "session my sessions api with valid authorization",
+    "description": "Test GET /session/my-sessions with valid Authorization header to ensure it returns 200 with an array of session objects including session_id, device_id, start_time, end_time, status, and metrics."
+  },
+  {
+    "id": "TC010",
+    "title": "device start api without authorization header",
+    "description": "Test POST /device/start without Authorization header to verify it returns 401 Unauthorized."
+  },
+  {
+    "id": "TC011",
+    "title": "device update temperature with invalid string target",
+    "description": "Test POST /device/update-temperature with valid Authorization but an invalid temperature format (e.g., a string) to verify it returns a 400 Bad Request error."
+  }
+]

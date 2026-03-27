@@ -1,0 +1,57 @@
+version: "2"
+type: backend
+tech_stack:
+  - Python
+  - Flask
+  - Firebase
+features:
+  - name: Health Check API
+    description: Basic health check for the backend service
+    files:
+      - app.py
+    endpoints:
+      - method: GET
+        path: /
+        description: Returns service status
+        auth_required: false
+  - name: Device Management API
+    description: Register, control, and list IoT drying devices
+    files:
+      - routes/device_routes.py
+      - services/device_service.py
+    endpoints:
+      - method: POST
+        path: /device/register
+        description: Register a new device to a user
+        auth_required: true
+      - method: POST
+        path: /device/start
+        description: Start a drying session on a device
+        auth_required: true
+      - method: POST
+        path: /device/stop
+        description: Stop a drying session
+        auth_required: true
+      - method: POST
+        path: /device/update-temperature
+        description: Update target temperature
+        auth_required: true
+      - method: POST
+        path: /device/update-fan-speed
+        description: Update fan speed
+        auth_required: true
+      - method: GET
+        path: /device/list
+        description: List all devices for the current user
+        auth_required: true
+  - name: Session Management API
+    description: Manage drying sessions and history
+    files:
+      - routes/session_routes.py
+      - services/session_service.py
+    endpoints:
+      - method: GET
+        path: /session/my-sessions
+        description: Fetch past drying sessions for the user
+        auth_required: true
+known_limitations: []
