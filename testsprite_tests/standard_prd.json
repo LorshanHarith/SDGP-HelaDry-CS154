@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "project": "HelaDry Flutter Web — Solar-Powered IoT Dehydrator Companion",
+    "date": "2026-03-28",
+    "prepared_by": "Project team / TestSprite prep"
+  },
+  "product_overview": "HelaDry is a Flutter companion app for a solar-powered food dehydrator. The web build provides authentication, connection mode selection, device pairing and Wi-Fi setup UI, dashboard with metrics, manual controls, batch start, crop guide, records, and settings. The app integrates Firebase Auth and calls a REST backend at http://localhost:5000 for device and session APIs.",
+  "core_goals": [
+    "Allow users to sign in or register via Firebase Auth",
+    "Guide users through online/offline connection and pairing flows",
+    "Present dashboard, manual controls, and batch management UIs",
+    "Surface drying records, crop guide, and configurable settings"
+  ],
+  "features": [
+    {
+      "name": "Authentication UI",
+      "description": "Splash, login, and create-account screens with Firebase-backed auth.",
+      "user_flows": [
+        "Open / -> Splash visible then navigate toward login",
+        "Open /login -> Enter credentials and submit login",
+        "Open /create-account -> Complete registration form"
+      ]
+    },
+    {
+      "name": "Connection and pairing",
+      "description": "Choose connection mode, BLE pair flow, and Wi-Fi provisioning wizard.",
+      "user_flows": [
+        "Open /connection-mode -> Select online or offline",
+        "Open /pair-device -> View scan or device list UI",
+        "Open /wifi-setup-step1 through step3 -> Progress through wizard"
+      ]
+    },
+    {
+      "name": "Main application screens",
+      "description": "Dashboard, controls, batch, guide, records, settings.",
+      "user_flows": [
+        "Open /dashboard -> See metrics and navigation",
+        "Open /manual-controls -> Adjust fan/temperature controls",
+        "Open /start-new-batch -> Configure a new drying batch",
+        "Open /crop-guide -> View drying recommendations",
+        "Open /my-records -> List or empty state for history",
+        "Open /settings and /edit-profile -> Adjust preferences and profile"
+      ]
+    }
+  ],
+  "code_summary": {
+    "version": "2",
+    "type": "frontend",
+    "tech_stack": ["Dart", "Flutter", "Material", "Provider", "Firebase", "HTTP"],
+    "features": [
+      {
+        "name": "User login",
+        "description": "Firebase email/password login",
+        "files": ["lib/features/auth/pages/login_page.dart", "lib/services/auth_service.dart"],
+        "entry_route": "/login",
+        "auth_required": false
+      },
+      {
+        "name": "Dashboard",
+        "description": "Main metrics and navigation hub",
+        "files": ["lib/features/dashboard/pages/dashboard_page.dart"],
+        "entry_route": "/dashboard",
+        "auth_required": true
+      }
+    ],
+    "known_limitations": [
+      {
+        "issue": "BLE limited on web",
+        "location": "lib/services/ble_service.dart",
+        "impact": "Pairing may differ from mobile"
+      }
+    ]
+  }
+}

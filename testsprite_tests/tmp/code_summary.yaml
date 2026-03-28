@@ -1,0 +1,152 @@
+version: "2"
+type: frontend
+tech_stack:
+  - Dart
+  - Flutter
+  - Material Design
+  - Provider
+  - Firebase Auth
+  - HTTP client
+routes:
+  - path: /
+    file: lib/features/auth/pages/splash_page.dart
+    auth_required: false
+    description: Splash screen before login or main flow
+  - path: /login
+    file: lib/features/auth/pages/login_page.dart
+    auth_required: false
+    description: Email/password login with Firebase
+  - path: /create-account
+    file: lib/features/auth/pages/create_account_page.dart
+    auth_required: false
+    description: New user registration
+  - path: /connection-mode
+    file: lib/features/connection/pages/connection_mode_page.dart
+    auth_required: true
+    description: Choose online (Wi-Fi) or offline (BLE) mode
+  - path: /pair-device
+    file: lib/features/pair/pages/pair_device_page.dart
+    auth_required: true
+    description: BLE device scan and pair flow
+  - path: /pair-success
+    file: lib/features/pair/pages/pair_success_page.dart
+    auth_required: true
+    description: Confirmation after successful pairing
+  - path: /wifi-setup-step1
+    file: lib/features/wifi/pages/wifi_setup_ble_step1_page.dart
+    auth_required: true
+    description: Wi-Fi setup wizard step 1
+  - path: /wifi-setup-step2
+    file: lib/features/wifi/pages/wifi_setup_ble_step2_page.dart
+    auth_required: true
+    description: Wi-Fi setup wizard step 2
+  - path: /wifi-setup-step3
+    file: lib/features/wifi/pages/wifi_setup_ble_step3_page.dart
+    auth_required: true
+    description: Wi-Fi setup wizard step 3
+  - path: /dashboard
+    file: lib/features/dashboard/pages/dashboard_page.dart
+    auth_required: true
+    description: Main dashboard with live metrics
+  - path: /manual-controls
+    file: lib/features/controls/pages/manual_controls_page.dart
+    auth_required: true
+    description: Fan, heater, temperature, emergency stop
+  - path: /my-records
+    file: lib/features/records/pages/my_records_page.dart
+    auth_required: true
+    description: Drying history with filters and search
+  - path: /start-new-batch
+    file: lib/features/batch/pages/start_new_batch_page.dart
+    auth_required: true
+    description: Start batch with crop and settings
+  - path: /crop-guide
+    file: lib/features/guide/pages/crop_guide_page.dart
+    auth_required: true
+    description: Crop drying recommendations
+  - path: /settings
+    file: lib/features/settings/pages/settings_page.dart
+    auth_required: true
+    description: Theme, units, device actions, profile link
+  - path: /edit-profile
+    file: lib/features/settings/pages/edit_profile_page.dart
+    auth_required: true
+    description: Edit user profile fields
+features:
+  - name: User login
+    description: Sign in with email and password via Firebase Auth
+    files:
+      - lib/features/auth/pages/login_page.dart
+      - lib/services/auth_service.dart
+    entry_route: /login
+    user_interactions:
+      - Enter email and password
+      - Toggle password visibility
+      - Tap login to submit
+      - Use demo or quick access if available
+    api_calls:
+      - method: GET
+        endpoint: http://localhost:5000/ (health check from ApiService when configured)
+    auth_required: false
+  - name: Create account
+    description: Register a new Firebase user
+    files:
+      - lib/features/auth/pages/create_account_page.dart
+      - lib/services/auth_service.dart
+    entry_route: /create-account
+    user_interactions:
+      - Fill registration fields and confirm password
+      - Submit to create account
+    api_calls: []
+    auth_required: false
+  - name: Dashboard and device control
+    description: View metrics and navigate to controls and batch flows
+    files:
+      - lib/features/dashboard/pages/dashboard_page.dart
+      - lib/services/api_service.dart
+    entry_route: /dashboard
+    user_interactions:
+      - View dashboard metrics and status
+      - Navigate to manual controls or start batch
+    api_calls:
+      - method: POST
+        endpoint: /device/start
+      - method: POST
+        endpoint: /device/stop
+      - method: GET
+        endpoint: /device/list
+    auth_required: true
+  - name: Manual controls
+    description: Adjust fan, heater, temperature; emergency stop
+    files:
+      - lib/features/controls/pages/manual_controls_page.dart
+      - lib/services/api_service.dart
+    entry_route: /manual-controls
+    user_interactions:
+      - Change temperature and fan targets
+      - Trigger emergency stop
+    api_calls:
+      - method: POST
+        endpoint: /device/update-temperature
+      - method: POST
+        endpoint: /device/update-fan-speed
+    auth_required: true
+  - name: BLE pairing and Wi-Fi setup
+    description: Simulated or real BLE scan, pair, and Wi-Fi provisioning UI
+    files:
+      - lib/features/pair/pages/pair_device_page.dart
+      - lib/features/wifi/pages/wifi_setup_ble_step1_page.dart
+      - lib/services/ble_service.dart
+    entry_route: /pair-device
+    user_interactions:
+      - Scan and select a device
+      - Complete Wi-Fi wizard steps
+    api_calls: []
+    auth_required: true
+known_limitations:
+  - issue: BLE hardware and some plugins have limited or no support on Flutter web
+    location: lib/services/ble_service.dart
+    impact: Pairing flows may not behave like on mobile when tested in browser
+  - issue: Firebase Auth requires valid test credentials for full E2E login
+    location: lib/features/auth/pages/login_page.dart
+    impact: Automated tests may need provided credentials or demo path

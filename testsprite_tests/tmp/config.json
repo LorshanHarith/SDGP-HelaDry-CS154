@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8080",
+  "loginUser": "lorshanharithed8sci@gmail.com",
+  "loginPassword": "Mihawk1000@",
+  "executionArgs": {
+    "projectName": "SDGP-HelaDry-CS154-1",
+    "projectPath": "c:\\Users\\dinur\\Downloads\\SDGP-HelaDry-CS154-1",
+    "testIds": [],
+    "additionalInstruction": "Backend API runs at http://localhost:5000. Flutter web at http://localhost:8080.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": ""
+    }
+  },
+  "serverPort": 56490
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "id": "TC001",
+    "title": "splash screen loads and app shell renders",
+    "description": "Open the app root URL and verify the splash screen loads without errors and HelaDry branding or loading state is visible."
+  },
+  {
+    "id": "TC002",
+    "title": "navigate to login screen",
+    "description": "From splash or initial route, reach the login page at /login and verify email and password fields and login action are present."
+  },
+  {
+    "id": "TC003",
+    "title": "login form validation shows errors for empty submit",
+    "description": "On the login page, attempt submit with empty fields and verify validation or error feedback is shown."
+  },
+  {
+    "id": "TC004",
+    "title": "create account screen reachable",
+    "description": "Navigate to /create-account and verify registration form fields (email, password, confirm) are visible."
+  },
+  {
+    "id": "TC005",
+    "title": "connection mode selection screen",
+    "description": "After authenticated navigation if required, open connection mode page and verify online vs offline options are shown."
+  },
+  {
+    "id": "TC006",
+    "title": "dashboard route shows main metrics UI",
+    "description": "Navigate to /dashboard and verify dashboard layout with metric placeholders or cards is visible."
+  },
+  {
+    "id": "TC007",
+    "title": "manual controls page loads controls",
+    "description": "Open /manual-controls and verify temperature or fan related controls and emergency stop affordance exist."
+  },
+  {
+    "id": "TC008",
+    "title": "start new batch page loads",
+    "description": "Navigate to /start-new-batch and verify batch or crop selection UI is present."
+  },
+  {
+    "id": "TC009",
+    "title": "crop guide page loads",
+    "description": "Open /crop-guide and verify guide content or list of crops is displayed."
+  },
+  {
+    "id": "TC010",
+    "title": "my records page loads list or empty state",
+    "description": "Navigate to /my-records and verify records list, filters, or empty state is shown."
+  },
+  {
+    "id": "TC011",
+    "title": "settings page opens",
+    "description": "Open /settings and verify settings sections such as theme or profile link are visible."
+  },
+  {
+    "id": "TC012",
+    "title": "theme or appearance toggle if present",
+    "description": "From settings, if theme toggle exists, switch theme and verify UI updates (light/dark)."
+  },
+  {
+    "id": "TC013",
+    "title": "pair device flow entry",
+    "description": "Navigate to /pair-device and verify BLE scan or device list UI is shown or appropriate web limitation message."
+  },
+  {
+    "id": "TC014",
+    "title": "wifi setup wizard step 1",
+    "description": "Open /wifi-setup-step1 and verify first step of Wi-Fi provisioning wizard is visible."
+  },
+  {
+    "id": "TC015",
+    "title": "edit profile page reachable from settings",
+    "description": "Navigate to /edit-profile directly or via settings and verify profile form fields are present."
+  }
+]
