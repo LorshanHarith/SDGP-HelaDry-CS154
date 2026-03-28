@@ -1,0 +1,553 @@
+{
+  "info": {
+    "name": "HelaDry Frontend Integration Tests",
+    "description": "Postman collection for testing API endpoints consumed by the Flutter frontend application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "firebaseToken",
+      "value": "",
+      "type": "string",
+      "description": "Firebase JWT token for authentication"
+    },
+    {
+      "key": "flutterAppVersion",
+      "value": "1.0.0",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Flutter App Health Check",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "User-Agent",
+            "value": "HelaDryApp/{{flutterAppVersion}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/",
+          "host": ["{{baseUrl}}"],
+          "path": [""]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Flutter app can reach backend', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Backend responds with correct format for Flutter', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('status');",
+              "    pm.expect(jsonData).to.have.property('service');",
+              "    pm.expect(jsonData.service).to.equal('HelaDry Backend');",
+              "});",
+              "",
+              "pm.test('Response time acceptable for mobile app', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Device Registration Flow (Flutter)",
+      "item": [
+        {
+          "name": "Register Device from Flutter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_id\": \"flutter-test-device-{{randomUUID}}\",\n  \"device_name\": \"Flutter Test Device\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/device/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Device registration successful for Flutter', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response format compatible with Flutter', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('object');",
+                  "    pm.expect(jsonData).to.have.property('device_id');",
+                  "    pm.expect(jsonData).to.have.property('assigned_to_user');",
+                  "});",
+                  "",
+                  "// Store device ID for subsequent tests",
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.globals.set('flutterTestDeviceId', jsonData.device_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Devices for Flutter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/device/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "list"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Device list retrieval successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Device list format compatible with Flutter ListView', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "    if (jsonData.length > 0) {",
+                  "        const device = jsonData[0];",
+                  "        pm.expect(device).to.have.property('device_id');",
+                  "        pm.expect(device).to.have.property('device_name');",
+                  "        pm.expect(device).to.have.property('status');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('Response time acceptable for mobile UI', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Session Management for Flutter",
+      "item": [
+        {
+          "name": "Start Session from Flutter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_id\": \"{{flutterTestDeviceId}}\",\n  \"temperature\": 45,\n  \"batch_details\": {\n    \"batch_name\": \"Flutter Test Batch\",\n    \"duration\": 120,\n    \"material_type\": \"herbs\",\n    \"user_notes\": \"Test from Flutter app\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/device/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "start"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Session start successful from Flutter', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Session response format for Flutter UI', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('session_id');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData).to.have.property('device_id');",
+                  "    pm.expect(jsonData).to.have.property('start_time');",
+                  "});",
+                  "",
+                  "// Store session ID for monitoring",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.globals.set('flutterTestSessionId', jsonData.session_id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Sessions for Flutter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/session/my-sessions",
+              "host": ["{{baseUrl}}"],
+              "path": ["session", "my-sessions"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Session list retrieval successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Session list format for Flutter ListView', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "    if (jsonData.length > 0) {",
+                  "        const session = jsonData[0];",
+                  "        pm.expect(session).to.have.property('session_id');",
+                  "        pm.expect(session).to.have.property('device_id');",
+                  "        pm.expect(session).to.have.property('start_time');",
+                  "        pm.expect(session).to.have.property('status');",
+                  "        pm.expect(session).to.have.property('metrics');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test('Session metrics format for Flutter charts', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.length > 0) {",
+                  "        const session = jsonData[0];",
+                  "        if (session.metrics) {",
+                  "            pm.expect(session.metrics).to.be.an('object');",
+                  "            // Check for common metrics that Flutter charts might use",
+                  "            const metrics = session.metrics;",
+                  "            if (metrics.temperature) {",
+                  "                pm.expect(metrics.temperature).to.be.an('array');",
+                  "            }",
+                  "            if (metrics.humidity) {",
+                  "                pm.expect(metrics.humidity).to.be.an('array');",
+                  "            }",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Real-time Control from Flutter",
+      "item": [
+        {
+          "name": "Update Temperature from Flutter UI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_id\": \"{{flutterTestDeviceId}}\",\n  \"temperature\": 50\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/device/update-temperature",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "update-temperature"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Temperature update from Flutter successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response format for Flutter UI update', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('device_id');",
+                  "    pm.expect(jsonData).to.have.property('temperature');",
+                  "    pm.expect(jsonData.temperature).to.equal(50);",
+                  "});",
+                  "",
+                  "pm.test('Response time acceptable for real-time control', function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Fan Speed from Flutter UI",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_id\": \"{{flutterTestDeviceId}}\",\n  \"fan_speed\": 60\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/device/update-fan-speed",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "update-fan-speed"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Fan speed update from Flutter successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response format for Flutter UI update', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('device_id');",
+                  "    pm.expect(jsonData).to.have.property('fan_speed');",
+                  "    pm.expect(jsonData.fan_speed).to.equal(60);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stop Session from Flutter",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_id\": \"{{flutterTestDeviceId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/device/stop",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "stop"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Session stop from Flutter successful', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Stop response format for Flutter UI', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('device_id');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData.status).to.equal('stopped');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Flutter App Error Handling",
+      "item": [
+        {
+          "name": "Network Error Simulation",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid_token"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/device/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "list"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Flutter app handles authentication errors', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([401, 403]);",
+                  "});",
+                  "",
+                  "pm.test('Error response format for Flutter error handling', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('error');",
+                  "    pm.expect(jsonData.error).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Server Error Handling",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{firebaseToken}}"
+              },
+              {
+                "key": "User-Agent",
+                "value": "HelaDryApp/{{flutterAppVersion}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_id\": \"nonexistent-device\",\n  \"temperature\": 45\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/device/update-temperature",
+              "host": ["{{baseUrl}}"],
+              "path": ["device", "update-temperature"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Flutter app handles device not found errors', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+                  "});",
+                  "",
+                  "pm.test('Error message format for Flutter UI display', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('error');",
+                  "    pm.expect(jsonData.error).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
