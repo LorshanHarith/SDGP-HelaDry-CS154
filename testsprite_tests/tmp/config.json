@@ -8,12 +8,18 @@
   "executionArgs": {
     "projectName": "SDGP-HelaDry-CS154-1",
     "projectPath": "c:\\Users\\dinur\\Downloads\\SDGP-HelaDry-CS154-1",
-    "testIds": [],
-    "additionalInstruction": "Backend API runs at http://localhost:5000. Flutter web at http://localhost:8080.",
+    "testIds": [
+      "TC012",
+      "TC013",
+      "TC014",
+      "TC015"
+    ],
+    "additionalInstruction": "Generate and execute the remaining frontend test cases for theme toggle, pair device flow, wifi setup wizard, and edit profile page. The app is running on port 8080.",
     "serverMode": "development",
     "envs": {
-      "API_KEY": ""
+      "API_KEY": "sk-user-cq0C8vMtYgSamzmnR-WrlwsagznrWWxcgADZPRLbkoIFKng86qzDohur5tCkGJYhZE-1S8DIp05XucbImKHEWXH04FBqxSSr4UpGo5I6kSMG3x1nemMMG-eINvVB9JTzskg"
     }
   },
-  "serverPort": 56490
+  "serverPort": 59235,
+  "proxy": "http://3b373461-8172-4059-81a5-e3105b3756e2:iBVuHRCJtlbVnXT4JeOgKVcvSGqWbjlP@tun.testsprite.com:8080"
 }

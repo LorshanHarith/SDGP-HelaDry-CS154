@@ -6,3 +6,40 @@
 {"timestamp":"2026-03-28T08:31:18.309Z","level":"info","message":"Attempting to start HTTP proxy (attempt 1/3)"}
 {"timestamp":"2026-03-28T08:31:18.259Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
 {"timestamp":"2026-03-28T08:31:18.310Z","level":"info","message":"HTTP proxy started successfully on port 56492"}
+{"timestamp":"2026-03-28T09:10:39.467Z","level":"debug","message":"Generate code and execute params","context":{"projectName":"SDGP-HelaDry-CS154-1","projectPath":"c:\\Users\\dinur\\Downloads\\SDGP-HelaDry-CS154-1","testIds":["TC012","TC013","TC014","TC015"],"serverMode":"development"}}
+{"timestamp":"2026-03-28T09:10:39.514Z","level":"info","message":"HTTP server started successfully on port 59235"}
+{"timestamp":"2026-03-28T09:10:39.580Z","level":"info","message":"HTTP proxy started successfully on port 59237"}
+{"timestamp":"2026-03-28T09:10:39.506Z","level":"info","message":"Attempting to start server (attempt 1/3)"}
+{"timestamp":"2026-03-28T09:10:39.579Z","level":"info","message":"Attempting to start HTTP proxy (attempt 1/3)"}
+{"timestamp":"2026-03-28T09:10:40.490Z","level":"info","message":"🚀 Starting tunnel client: 3b373461-8172-4059-81a5-e3105b3756e2"}
+{"timestamp":"2026-03-28T09:10:40.491Z","level":"info","message":"📋 Config: localhost:59237 -> tun.testsprite.com:7300"}
+{"timestamp":"2026-03-28T09:10:40.491Z","level":"info","message":"⏱️ Network timeout: 10000ms, Auth: enabled"}
+{"timestamp":"2026-03-28T09:10:41.090Z","level":"info","message":"proxy: [REDACTED]tun.testsprite.com:8080"}
+{"timestamp":"2026-03-28T09:10:41.090Z","level":"info","message":"Pre-flight probe attempt 1/3 to http://localhost:8080..."}
+{"timestamp":"2026-03-28T09:10:40.492Z","level":"info","message":"🔗 Establishing control connection..."}
+{"timestamp":"2026-03-28T09:10:41.373Z","level":"info","message":"Tunnel probe attempt 1/2 through tun.testsprite.com:8080 to http://localhost:8080..."}
+{"timestamp":"2026-03-28T09:10:41.372Z","level":"info","message":"Pre-flight probe succeeded on attempt 1: status=200"}
+{"timestamp":"2026-03-28T09:10:41.639Z","level":"info","message":"✅ Tunnel established, remote port: 8080"}
+{"timestamp":"2026-03-28T09:10:41.372Z","level":"info","message":"Verifying tunnel connectivity..."}
+{"timestamp":"2026-03-28T09:10:41.937Z","level":"info","message":"🔄 [1] New connection request: 349248fe-4b0b-4a02-873f-63d71945a7cd"}
+{"timestamp":"2026-03-28T09:10:41.937Z","level":"info","message":"TIME: connection-1"}
+{"timestamp":"2026-03-28T09:10:42.187Z","level":"info","message":"local-connect-1"}
+{"timestamp":"2026-03-28T09:10:41.938Z","level":"info","message":"🔗 [1] Starting handleConnection for 349248fe-4b0b-4a02-873f-63d71945a7cd"}
+{"timestamp":"2026-03-28T09:10:42.186Z","level":"info","message":"TIME END: remote-connect-1"}
+{"timestamp":"2026-03-28T09:10:42.203Z","level":"info","message":"🔐 [1] Performing authentication"}
+{"timestamp":"2026-03-28T09:10:42.444Z","level":"info","message":"✋ [1] Sending Accept message for 349248fe-4b0b-4a02-873f-63d71945a7cd"}
+{"timestamp":"2026-03-28T09:10:42.187Z","level":"info","message":"✅ [1] Remote connection established"}
+{"timestamp":"2026-03-28T09:10:42.444Z","level":"info","message":"🔄 [1] Starting data proxy"}
+{"timestamp":"2026-03-28T09:10:42.199Z","level":"info","message":"✅ [1] Local connection established"}
+{"timestamp":"2026-03-28T09:10:41.938Z","level":"info","message":"🌐 [1] Connecting to remote tun.testsprite.com:7300"}
+{"timestamp":"2026-03-28T09:10:41.938Z","level":"info","message":"TIME: remote-connect-1"}
+{"timestamp":"2026-03-28T09:10:42.446Z","level":"info","message":"✅ [1] Connection 349248fe-4b0b-4a02-873f-63d71945a7cd fully established and proxying"}
+{"timestamp":"2026-03-28T09:10:42.187Z","level":"info","message":"📡 [1] Connecting to local localhost:59237"}
+{"timestamp":"2026-03-28T09:10:42.198Z","level":"info","message":"TIME END: local-connect-1"}
+{"timestamp":"2026-03-28T09:10:42.203Z","level":"info","message":"👋 [1] Hello message sent"}
+{"timestamp":"2026-03-28T09:10:42.199Z","level":"info","message":"🤝 [1] Starting handshake"}
+{"timestamp":"2026-03-28T09:10:42.443Z","level":"info","message":"✅ [1] Authentication completed"}
+{"timestamp":"2026-03-28T09:10:42.447Z","level":"info","message":"TIME END: connection-1"}
+{"timestamp":"2026-03-28T09:10:43.260Z","level":"info","message":"Tunnel connectivity verified."}
+{"timestamp":"2026-03-28T09:10:43.259Z","level":"info","message":"Tunnel probe succeeded on attempt 1: status=200"}
+{"timestamp":"2026-03-28T09:10:44.355Z","level":"info","message":"GET /favicon.ico 404 2ms"}
