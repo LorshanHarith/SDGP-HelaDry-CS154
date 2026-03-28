@@ -1,0 +1,27 @@
+Frontend Test Execution Results
+=============================
+
+Summary:
+- Total Test Cases: 15
+- Total Subtests: 28 (Based on JSON output)
+- Passed: 17
+- Failed/Error: 11
+
+Details:
+TC001: FAILED (Firebase Initialization Error)
+TC002: FAILED (Firebase Initialization Error)
+TC003: FAILED (Firebase Initialization Error)
+TC004: FAILED (Firebase Initialization Error)
+TC005: FAILED (Firebase Initialization Error)
+TC006: FAILED (Firebase Initialization Error)
+TC007: FAILED (Firebase Initialization Error)
+TC008: FAILED (Firebase Initialization Error)
+TC009: FAILED (Firebase Initialization Error)
+TC010: FAILED (Firebase Initialization Error)
+TC011: FAILED (Firebase Initialization Error)
+TC012: MIXED (1 Failed, 1 Passed)
+TC013: PASSED
+TC014: MIXED (1 Failed, 1 Passed)
+TC015: PASSED
+
+Note: Tests failed primarily due to missing Firebase initialization in the test environment.
